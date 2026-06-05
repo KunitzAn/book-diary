@@ -1,4 +1,15 @@
 services:
+  app:
+    build: .
+    container_name: book-diary-app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgresql://bookuser:bookpass@db:5432/bookdiary"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+
   db:
     image: postgres:16
     container_name: book-diary-db
@@ -7,8 +18,6 @@ services:
       POSTGRES_USER: bookuser
       POSTGRES_PASSWORD: bookpass
       POSTGRES_DB: bookdiary
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 
