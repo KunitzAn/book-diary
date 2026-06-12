@@ -2,6 +2,7 @@ import Fastify from 'fastify'
 import { PrismaClient } from './generated/prisma/client.js'
 import { PrismaPg } from '@prisma/adapter-pg'
 import cors from '@fastify/cors'
+import { authRoutes } from './routes/auth.js'
 
 const app = Fastify({ logger: true })
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
@@ -15,6 +16,9 @@ await app.register(cors, {
     'https://www.kunitcan.online'
   ]
 })
+
+// Роуты авторизации
+app.register(authRoutes)
 
 // Получить список всех книг
 app.get('/books', async () => {
