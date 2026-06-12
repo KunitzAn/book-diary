@@ -7,7 +7,14 @@ const app = Fastify({ logger: true })
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
 const prisma = new PrismaClient({ adapter })
 
-await app.register(cors, { origin: 'http://localhost:5173' })
+await app.register(cors, {
+  origin: [
+    'http://localhost:5173',
+    'https://bookdiary.pages.dev',
+    'https://kunitcan.online',
+    'https://www.kunitcan.online'
+  ]
+})
 
 // Получить список всех книг
 app.get('/books', async () => {
