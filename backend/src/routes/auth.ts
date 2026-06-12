@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
-import { prisma } from '../lib/prisma'
+import { prisma } from '../lib/prisma.js'
 
 interface TelegramAuthData {
   id: number

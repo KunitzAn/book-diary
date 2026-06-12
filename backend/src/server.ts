@@ -1,4 +1,4 @@
-import Fastify from 'fastify'
+/*import Fastify from 'fastify'
 import { PrismaClient } from './generated/prisma/client.js'
 import { PrismaPg } from '@prisma/adapter-pg'
 import cors from '@fastify/cors'
@@ -24,6 +24,31 @@ app.register(authRoutes)
 app.get('/books', async () => {
   const books = await prisma.book.findMany()
   return books
+})
+*/
+
+import Fastify from 'fastify'
+import cors from '@fastify/cors'
+import { prisma } from './lib/prisma.js'
+import { authRoutes } from './routes/auth.js'
+
+const app = Fastify({ logger: true })
+
+await app.register(cors, {
+  origin: [
+    'http://localhost:5173',
+    'https://bookdiary.pages.dev',
+    'https://kunitcan.online',
+    'https://www.kunitcan.online'
+  ]
+})
+
+app.register(authRoutes)
+
+app.get('/health', async () => ({ ok: true })) 
+
+app.get('/books', async () => {
+  return prisma.book.findMany()
 })
 
 // Добавить книгу
