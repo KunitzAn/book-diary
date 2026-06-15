@@ -3,6 +3,8 @@ services:
     build: .
     container_name: book-diary-app
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       DATABASE_URL: "postgresql://bookuser:bookpass@db:5432/bookdiary"
     ports:
@@ -23,3 +25,6 @@ services:
 
 volumes:
   pgdata:
+
+
+
