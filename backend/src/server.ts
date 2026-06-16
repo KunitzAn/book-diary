@@ -2,7 +2,7 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import { prisma } from './lib/prisma.js'
 import { authRoutes } from './routes/auth.js'
-import { booksRoutes } from './routes/books.js'
+import booksRoutes from './routes/books.js'
 
 const app = Fastify({ logger: true })
 
