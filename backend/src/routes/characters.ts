@@ -2,61 +2,59 @@ import { FastifyInstance } from 'fastify'
 import { prisma } from '../lib/prisma.js'
 import { authMiddleware } from '../middleware/auth.js'
 
-export default async function quotesRoutes(app: FastifyInstance) {
+export default async function charactersRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authMiddleware)
 
-  // 8.2.1 POST /books/:id/quotes — добавить цитату
-  app.post('/books/:id/quotes', async (request, reply) => {
+  // 8.2.4 POST /books/:id/characters
+  app.post('/books/:id/characters', async (request, reply) => {
     const userId = request.user!.userId
     const { id } = request.params as { id: string }
-    const body = request.body as { text: string; chapter?: string }
+    const body = request.body as { name: string; description?: string }
 
-    // проверка владельца через книгу
     const book = await prisma.book.findFirst({
       where: { id: Number(id), userId },
     })
     if (!book) return reply.code(404).send({ error: 'Book not found' })
 
-    const quote = await prisma.quote.create({
-      data: { bookId: Number(id), text: body.text, chapter: body.chapter },
+    const character = await prisma.character.create({
+      data: { bookId: Number(id), name: body.name, description: body.description },
     })
-    return reply.code(201).send(quote)
+    return reply.code(201).send(character)
   })
 
-  // 8.2.2 PATCH /quotes/:id — редактировать
-  app.patch('/quotes/:id', async (request, reply) => {
+  // 8.2.5 PATCH /characters/:id
+  app.patch('/characters/:id', async (request, reply) => {
     const userId = request.user!.userId
     const { id } = request.params as { id: string }
     const body = request.body as Record<string, any>
 
-    // цитата + её книга, проверяем владельца книги
-    const quote = await prisma.quote.findFirst({
+    const character = await prisma.character.findFirst({
       where: { id: Number(id), book: { userId } },
     })
-    if (!quote) return reply.code(404).send({ error: 'Quote not found' })
+    if (!character) return reply.code(404).send({ error: 'Character not found' })
 
-    const allowed = ['text', 'chapter']
+    const allowed = ['name', 'description']
     const data: Record<string, any> = {}
     for (const key of allowed) if (key in body) data[key] = body[key]
 
-    const updated = await prisma.quote.update({
+    const updated = await prisma.character.update({
       where: { id: Number(id) },
       data,
     })
     return updated
   })
 
-  // 8.2.3 DELETE /quotes/:id — удалить
-  app.delete('/quotes/:id', async (request, reply) => {
+  // 8.2.6 DELETE /characters/:id
+  app.delete('/characters/:id', async (request, reply) => {
     const userId = request.user!.userId
     const { id } = request.params as { id: string }
 
-    const quote = await prisma.quote.findFirst({
+    const character = await prisma.character.findFirst({
       where: { id: Number(id), book: { userId } },
     })
-    if (!quote) return reply.code(404).send({ error: 'Quote not found' })
+    if (!character) return reply.code(404).send({ error: 'Character not found' })
 
-    await prisma.quote.delete({ where: { id: Number(id) } })
+    await prisma.character.delete({ where: { id: Number(id) } })
     return reply.code(204).send()
   })
 }
