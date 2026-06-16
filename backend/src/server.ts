@@ -3,6 +3,8 @@ import cors from '@fastify/cors'
 import { prisma } from './lib/prisma.js'
 import { authRoutes } from './routes/auth.js'
 import booksRoutes from './routes/books.js'
+import quotesRoutes from './routes/quotes.js'
+import charactersRoutes from './routes/characters.js'
 
 const app = Fastify({ logger: true })
 
@@ -17,6 +19,8 @@ await app.register(cors, {
 
 app.register(authRoutes)
 app.register(booksRoutes)
+app.register(quotesRoutes)
+app.register(charactersRoutes)
 
 app.get('/health', async () => ({ ok: true }))
 
