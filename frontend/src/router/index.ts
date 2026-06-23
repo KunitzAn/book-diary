@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { getToken } from '../lib/api'
 import Login from '../pages/Login.vue'
 import Shelf from '../pages/Shelf.vue'
+import BookDetail from '../pages/BookDetail.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -14,6 +15,12 @@ const router = createRouter({
       path: '/shelf',
       component: Shelf,
       meta: { requiresAuth: true },
+    },
+    {
+      path: '/books/:id',
+      component: BookDetail,
+      meta: { requiresAuth: true },
+      props: true,
     },
     {
       path: '/',
