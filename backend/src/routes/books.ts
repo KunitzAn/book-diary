@@ -1,6 +1,8 @@
 import { FastifyInstance } from 'fastify'
 import { prisma } from '../lib/prisma.js'
 import { authMiddleware } from '../middleware/auth.js'
+import { writeFile, mkdir } from 'node:fs/promises'   
+import { join } from 'node:path'                       
 
 // ── Переиспользуемые куски схем ──
 const idParam = {
@@ -156,6 +158,63 @@ export default async function booksRoutes(app: FastifyInstance) {
 
       await prisma.book.delete({ where: { id } })
       return reply.code(204).send()
+    }
+  )
+
+    // ── 10.1.2 POST /books/:id/cover ──
+  app.post(
+    '/books/:id/cover',
+    { schema: { params: idParam } },
+    async (request, reply) => {
+      const userId = request.user!.userId
+      const { id } = request.params as { id: number }
+
+      // проверяем что книга есть и принадлежит юзеру
+      const existing = await prisma.book.findFirst({ where: { id, userId } })
+      if (!existing) return reply.code(404).send({ error: 'Book not found' })
+
+      // получаем файл
+      const data = await request.file()
+      if (!data) return reply.code(400).send({ error: 'No file uploaded' })
+
+      // валидация типа
+      const allowedMime: Record<string, string> = {
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/webp': 'webp',
+      }
+      const ext = allowedMime[data.mimetype]
+      if (!ext) {
+        return reply
+          .code(400)
+          .send({ error: 'Unsupported format. Use jpg, png or webp' })
+      }
+
+      // читаем содержимое (тут же сработает лимит 5 МБ из конфига)
+      let buffer: Buffer
+      try {
+        buffer = await data.toBuffer()
+      } catch (err) {
+        return reply.code(413).send({ error: 'File too large (max 5MB)' })
+      }
+
+      // папка для загрузок
+      const uploadsDir = join(process.cwd(), 'uploads', 'covers')
+      await mkdir(uploadsDir, { recursive: true })
+
+      // уникальное имя
+      const filename = `${id}-${Date.now()}.${ext}`
+      await writeFile(join(uploadsDir, filename), buffer)
+
+      // путь, по которому файл будет отдаваться наружу
+      const coverUrl = `/uploads/covers/${filename}`
+
+      const updated = await prisma.book.update({
+        where: { id },
+        data: { coverUrl },
+      })
+
+      return updated
     }
   )
 }

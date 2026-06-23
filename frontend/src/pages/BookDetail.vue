@@ -14,8 +14,29 @@
     <div v-else-if="book" class="p-4 flex flex-col gap-4">
 
       <!-- Обложка -->
-      <div class="mx-auto flex h-44 w-30 items-center justify-center rounded-xl bg-gray-200 text-5xl shadow">
-        📖
+      <div class="mx-auto flex flex-col items-center gap-2">
+        <div class="flex h-44 w-30 items-center justify-center rounded-xl bg-gray-200 shadow overflow-hidden">
+          <img
+            v-if="book.coverUrl"
+            :src="apiBase + book.coverUrl"
+            alt="Обложка"
+            class="h-full w-full object-cover"
+          />
+          <span v-else class="text-5xl">📖</span>
+        </div>
+
+        <!-- Кнопка загрузки -->
+        <label class="cursor-pointer rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-200">
+          {{ book.coverUrl ? '🔄 Заменить обложку' : '📷 Добавить обложку' }}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            class="hidden"
+            @change="onCoverChange"
+          />
+        </label>
+        <p v-if="coverUploading" class="text-xs text-gray-400">Загружаю…</p>
+        <p v-if="coverError" class="text-xs text-red-500">{{ coverError }}</p>
       </div>
 
       <!-- Основные поля -->
@@ -101,7 +122,6 @@
 
         <!-- Цитаты -->
         <div v-else-if="activeTab === 'quotes'" class="p-4 flex flex-col gap-3">
-          <!-- Форма добавления -->
           <div class="flex flex-col gap-2 rounded-lg border border-dashed border-gray-300 p-3">
             <textarea
               v-model="newQuote.text"
@@ -124,7 +144,6 @@
             </button>
           </div>
 
-          <!-- Список -->
           <p v-if="book.quotes?.length === 0" class="text-sm text-gray-400">Цитат пока нет.</p>
           <div
             v-for="q in book.quotes" :key="q.id"
@@ -160,7 +179,6 @@
 
         <!-- Герои -->
         <div v-else-if="activeTab === 'characters'" class="p-4 flex flex-col gap-3">
-          <!-- Форма добавления -->
           <div class="flex flex-col gap-2 rounded-lg border border-dashed border-gray-300 p-3">
             <input
               v-model="newChar.name"
@@ -183,7 +201,6 @@
             </button>
           </div>
 
-          <!-- Список -->
           <p v-if="book.characters?.length === 0" class="text-sm text-gray-400">Персонажей пока нет.</p>
           <div
             v-for="c in book.characters" :key="c.id"
@@ -244,6 +261,7 @@ import {
   getBook, updateBook, deleteBook,
   addQuote, updateQuote, deleteQuote,
   addCharacter, updateCharacter, deleteCharacter,
+  uploadCover,
 } from '../api/books'
 import type { Book, Quote, Character, Status } from '../types/models'
 import InlineField from '../components/InlineField.vue'
@@ -251,6 +269,8 @@ import InlineField from '../components/InlineField.vue'
 // ─── роутер ───────────────────────────────────────────────
 const props = defineProps<{ id: string }>()
 const router = useRouter()
+
+const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 // ─── данные ───────────────────────────────────────────────
 const book = ref<Book | null>(null)
@@ -261,7 +281,6 @@ onMounted(async () => {
   try {
     book.value = await getBook(Number(props.id))
     notesValue.value = book.value.notes ?? ''
-    // гарантируем массивы
     book.value.quotes ??= []
     book.value.characters ??= []
   } catch (e) {
@@ -280,6 +299,28 @@ async function patch(data: Partial<Book>) {
     book.value.characters ??= []
   } catch (e) {
     alert(e instanceof Error ? e.message : 'Ошибка сохранения')
+  }
+}
+
+// ─── обложка ──────────────────────────────────────────────
+const coverUploading = ref(false)
+const coverError = ref('')
+
+async function onCoverChange(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file || !book.value) return
+  coverUploading.value = true
+  coverError.value = ''
+  try {
+    book.value = await uploadCover(book.value.id, file)
+    book.value.quotes ??= []
+    book.value.characters ??= []
+  } catch (err) {
+    coverError.value = err instanceof Error ? err.message : 'Ошибка загрузки'
+  } finally {
+    coverUploading.value = false
+    // сбрасываем input, чтобы можно было загрузить тот же файл повторно
+    ;(e.target as HTMLInputElement).value = ''
   }
 }
 

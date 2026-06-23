@@ -9,6 +9,8 @@ services:
       DATABASE_URL: "postgresql://bookuser:bookpass@db:5432/bookdiary"
     ports:
       - "3000:3000"
+    volumes:                          
+      - uploads:/app/uploads          
     depends_on:
       - db
 
@@ -25,6 +27,4 @@ services:
 
 volumes:
   pgdata:
-
-
-
+  uploads:                            

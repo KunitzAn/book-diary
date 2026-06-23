@@ -84,3 +84,26 @@ export function updateCharacter(id: number, data: { name?: string; description?:
 export function deleteCharacter(id: number): Promise<void> {
   return apiFetch<void>(`/characters/${id}`, { method: 'DELETE' })
 }
+
+// ---------- Cover ----------
+
+export async function uploadCover(bookId: number, file: File): Promise<Book> {
+  const formData = new FormData()
+  formData.append('cover', file)
+
+  const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+  const token = localStorage.getItem('token')
+
+  const res = await fetch(`${BASE_URL}/books/${bookId}/cover`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  })
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.message ?? 'Ошибка загрузки обложки')
+  }
+
+  return res.json()
+}

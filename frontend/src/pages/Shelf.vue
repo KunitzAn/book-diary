@@ -27,9 +27,17 @@
           :to="`/books/${book.id}`"
           class="block rounded-lg border border-gray-200 bg-white p-4 hover:shadow"
         >
-          <div class="mb-2 flex aspect-[2/3] items-center justify-center rounded bg-gray-100 text-3xl">
-            📖
+          <!-- Обложка -->
+          <div class="mb-2 flex aspect-[2/3] items-center justify-center rounded bg-gray-100 text-3xl overflow-hidden">
+            <img
+              v-if="book.coverUrl"
+              :src="apiBase + book.coverUrl"
+              alt="Обложка"
+              class="h-full w-full object-cover"
+            />
+            <span v-else>📖</span>
           </div>
+
           <div class="truncate font-medium">{{ book.title }}</div>
           <div class="truncate text-sm text-gray-500">{{ book.author }}</div>
           <div class="mt-2 flex items-center justify-between">
@@ -70,6 +78,8 @@ const loading = ref(true)
 const error = ref('')
 const showModal = ref(false)
 
+const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+
 onMounted(async () => {
   try {
     books.value = await getBooks()
@@ -81,7 +91,7 @@ onMounted(async () => {
 })
 
 function onBookCreated(book: Book) {
-  books.value.unshift(book)  // добавляем в начало без перезагрузки
+  books.value.unshift(book)
 }
 
 function statusLabel(s: Status): string {

@@ -1,5 +1,8 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import multipart from '@fastify/multipart'
+import fastifyStatic from '@fastify/static'
+import { join } from 'node:path'
 import { prisma } from './lib/prisma.js'
 import { authRoutes } from './routes/auth.js'
 import booksRoutes from './routes/books.js'
@@ -15,7 +18,19 @@ await app.register(cors, {
     'https://kunitcan.online',
     'https://www.kunitcan.online'
   ],
-  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],  // ← добавить
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+})
+
+await app.register(multipart, {
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5 МБ
+    files: 1,
+  },
+})
+
+await app.register(fastifyStatic, {
+  root: join(process.cwd(), 'uploads'),
+  prefix: '/uploads/',
 })
 
 app.register(authRoutes)
