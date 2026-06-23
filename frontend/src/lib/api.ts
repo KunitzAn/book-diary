@@ -18,18 +18,28 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const token = getToken()
 
+  // Content-Type нужен только если есть тело
+  const hasBody = options.body != null
+  
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...(hasBody ? { 'Content-Type': 'application/json' } : {}),  // ← вот тут
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   })
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}))
-    throw new Error(error.message ?? `Ошибка ${res.status}`)
+    const data = await res.json().catch(() => ({}))
+    const msg = data.error ?? data.message ?? `Ошибка ${res.status}`
+    const err = new Error(msg) as Error & { status?: number }
+    err.status = res.status
+    throw err
+  }
+
+  if (res.status === 204) {
+    return undefined as T
   }
 
   return res.json()
