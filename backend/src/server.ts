@@ -14,7 +14,8 @@ await app.register(cors, {
     'https://bookdiary.pages.dev',
     'https://kunitcan.online',
     'https://www.kunitcan.online'
-  ]
+  ],
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],  // ← добавить
 })
 
 app.register(authRoutes)
