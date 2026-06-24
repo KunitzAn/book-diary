@@ -1,8 +1,10 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '../lib/prisma.js'
+import { authMiddleware } from '../middleware/auth.js'
 import { generateText, generateJSON } from '../lib/gemini.js'
 
 export default async function aiRoutes(app: FastifyInstance) {
+  app.addHook('onRequest', authMiddleware)   // ← ДОБАВИЛИ
 
   // POST /books/:id/generate-summary
   app.post('/books/:id/generate-summary', async (
@@ -10,7 +12,7 @@ export default async function aiRoutes(app: FastifyInstance) {
     reply: FastifyReply
   ) => {
     const bookId = parseInt(req.params.id)
-    const userId = (req as any).userId
+    const userId = req.user!.userId   // ← ИСПРАВИЛИ
 
     const book = await prisma.book.findFirst({
       where: { id: bookId, userId }
@@ -39,7 +41,7 @@ export default async function aiRoutes(app: FastifyInstance) {
     reply: FastifyReply
   ) => {
     const bookId = parseInt(req.params.id)
-    const userId = (req as any).userId
+    const userId = req.user!.userId   // ← ИСПРАВИЛИ
 
     const book = await prisma.book.findFirst({
       where: { id: bookId, userId }
@@ -50,12 +52,10 @@ export default async function aiRoutes(app: FastifyInstance) {
     }
 
     const prompt = `Перечисли главных персонажей книги "${book.title}" автора ${book.author}.
-Верни массив JSON объектов с полями name и description (1-2 предложения).`
+Верни ТОЛЬКО массив JSON объектов с полями name и description (1-2 предложения). Без markdown, без обёрток.`
 
-    // Используем generateJSON для получения структурированного ответа
     const characters = await generateJSON<{ name: string; description: string }[]>(prompt)
 
-    // Удаляем старых и записываем новых
     await prisma.character.deleteMany({ where: { bookId } })
     await prisma.character.createMany({
       data: characters.map(c => ({
