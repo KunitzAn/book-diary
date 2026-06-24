@@ -108,28 +108,16 @@ export async function uploadCover(bookId: number, file: File): Promise<Book> {
   return res.json()
 }
 
-// ─── AI генерация ─────────────────────────────────────────────────────────────
+// ---------- AI генерация ----------
 
-export async function generateSummary(bookId: number): Promise<{ summary: string }> {
-  const res = await fetch(`${API}/books/${bookId}/generate-summary`, {
+export function generateSummary(bookId: number): Promise<{ summary: string }> {
+  return apiFetch<{ summary: string }>(`/books/${bookId}/generate-summary`, {
     method: 'POST',
-    headers: authHeaders(),
   })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.error ?? 'Ошибка генерации саммари')
-  }
-  return res.json()
 }
 
-export async function generateCharacters(bookId: number): Promise<{ characters: Character[] }> {
-  const res = await fetch(`${API}/books/${bookId}/generate-characters`, {
+export function generateCharacters(bookId: number): Promise<{ characters: Character[] }> {
+  return apiFetch<{ characters: Character[] }>(`/books/${bookId}/generate-characters`, {
     method: 'POST',
-    headers: authHeaders(),
   })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.error ?? 'Ошибка генерации персонажей')
-  }
-  return res.json()
 }
