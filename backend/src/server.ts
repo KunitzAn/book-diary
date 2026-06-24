@@ -8,6 +8,7 @@ import { authRoutes } from './routes/auth.js'
 import booksRoutes from './routes/books.js'
 import quotesRoutes from './routes/quotes.js'
 import charactersRoutes from './routes/characters.js'
+import aiRoutes from './routes/ai.js'          
 
 const app = Fastify({ logger: true })
 
@@ -23,7 +24,7 @@ await app.register(cors, {
 
 await app.register(multipart, {
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5 МБ
+    fileSize: 5 * 1024 * 1024,
     files: 1,
   },
 })
@@ -37,6 +38,7 @@ app.register(authRoutes)
 app.register(booksRoutes)
 app.register(quotesRoutes)
 app.register(charactersRoutes)
+app.register(aiRoutes)                         
 
 app.get('/health', async () => ({ ok: true }))
 
