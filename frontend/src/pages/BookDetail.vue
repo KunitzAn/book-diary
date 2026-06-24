@@ -1,4 +1,3 @@
-<!-- src/pages/BookDetail.vue -->
 <template>
   <div class="min-h-screen bg-gray-50 pb-10">
 
@@ -25,7 +24,6 @@
           <span v-else class="text-5xl">📖</span>
         </div>
 
-        <!-- Кнопка загрузки -->
         <label class="cursor-pointer rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-200">
           {{ book.coverUrl ? '🔄 Заменить обложку' : '📷 Добавить обложку' }}
           <input
@@ -179,6 +177,21 @@
 
         <!-- Герои -->
         <div v-else-if="activeTab === 'characters'" class="p-4 flex flex-col gap-3">
+
+          <!-- AI кнопка -->
+          <button
+            @click="generateCharactersAI"
+            :disabled="charsAILoading"
+            class="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          >
+            <span v-if="charsAILoading" class="animate-spin">⏳</span>
+            <span v-else>✨</span>
+            {{ charsAILoading ? 'Генерирую…' : 'Сгенерировать персонажей AI' }}
+          </button>
+
+          <p v-if="charsAIError" class="text-sm text-red-500">{{ charsAIError }}</p>
+
+          <!-- Ручное добавление -->
           <div class="flex flex-col gap-2 rounded-lg border border-dashed border-gray-300 p-3">
             <input
               v-model="newChar.name"
@@ -234,10 +247,30 @@
         </div>
 
         <!-- Саммари -->
-        <div v-else-if="activeTab === 'summary'" class="p-4">
-          <p class="text-sm text-gray-400 text-center py-6">
-            🤖 ИИ-саммари появится в следующем обновлении
+        <div v-else-if="activeTab === 'summary'" class="p-4 flex flex-col gap-3">
+
+          <!-- Кнопка генерации -->
+          <button
+            @click="generateSummaryAI"
+            :disabled="summaryLoading"
+            class="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          >
+            <span v-if="summaryLoading" class="animate-spin">⏳</span>
+            <span v-else>✨</span>
+            {{ summaryLoading ? 'Генерирую…' : (book.summary ? 'Перегенерировать' : 'Сгенерировать саммари') }}
+          </button>
+
+          <p v-if="summaryError" class="text-sm text-red-500">{{ summaryError }}</p>
+
+          <!-- Текст саммари -->
+          <div v-if="book.summary" class="rounded-xl bg-gray-50 p-4">
+            <p class="text-sm leading-relaxed text-gray-800 whitespace-pre-line">{{ book.summary }}</p>
+          </div>
+
+          <p v-else-if="!summaryLoading" class="text-center text-sm text-gray-400 py-4">
+            Нажми кнопку — ИИ напишет краткое описание книги 🤖
           </p>
+
         </div>
 
       </div>
@@ -262,6 +295,8 @@ import {
   addQuote, updateQuote, deleteQuote,
   addCharacter, updateCharacter, deleteCharacter,
   uploadCover,
+  generateSummary,
+  generateCharacters,
 } from '../api/books'
 import type { Book, Quote, Character, Status } from '../types/models'
 import InlineField from '../components/InlineField.vue'
@@ -319,7 +354,6 @@ async function onCoverChange(e: Event) {
     coverError.value = err instanceof Error ? err.message : 'Ошибка загрузки'
   } finally {
     coverUploading.value = false
-    // сбрасываем input, чтобы можно было загрузить тот же файл повторно
     ;(e.target as HTMLInputElement).value = ''
   }
 }
@@ -467,6 +501,42 @@ async function removeChar(id: number) {
     book.value!.characters = book.value!.characters!.filter(c => c.id !== id)
   } catch (e) {
     alert(e instanceof Error ? e.message : 'Ошибка')
+  }
+}
+
+// ─── AI: саммари ──────────────────────────────────────────
+const summaryLoading = ref(false)
+const summaryError = ref('')
+
+async function generateSummaryAI() {
+  if (!book.value) return
+  summaryLoading.value = true
+  summaryError.value = ''
+  try {
+    const { summary } = await generateSummary(book.value.id)
+    book.value.summary = summary
+  } catch (e) {
+    summaryError.value = e instanceof Error ? e.message : 'Ошибка генерации'
+  } finally {
+    summaryLoading.value = false
+  }
+}
+
+// ─── AI: персонажи ────────────────────────────────────────
+const charsAILoading = ref(false)
+const charsAIError = ref('')
+
+async function generateCharactersAI() {
+  if (!book.value) return
+  charsAILoading.value = true
+  charsAIError.value = ''
+  try {
+    const { characters } = await generateCharacters(book.value.id)
+    book.value.characters = characters
+  } catch (e) {
+    charsAIError.value = e instanceof Error ? e.message : 'Ошибка генерации'
+  } finally {
+    charsAILoading.value = false
   }
 }
 </script>

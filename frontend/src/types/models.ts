@@ -2,20 +2,18 @@ export type Status = 'WANT' | 'READING' | 'READ'
 
 export interface Book {
   id: number
-  userId: number
   title: string
   author: string
-  genre: string | null
-  year: number | null
+  genre?: string | null
+  year?: number | null
   status: Status
-  rating: number | null
-  coverUrl: string | null
-  notes: string | null
-  summary: string | null
-  createdAt: string
-  updatedAt: string
+  rating?: number | null
+  notes?: string | null
+  summary?: string | null   // ← добавь если нет
+  coverUrl?: string | null
   quotes?: Quote[]
   characters?: Character[]
+  createdAt: string
 }
 
 export interface Quote {
