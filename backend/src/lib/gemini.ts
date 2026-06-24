@@ -1,49 +1,73 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+// backend/src/lib/gemini.ts
 
-const apiKey = process.env.GEMINI_API_KEY
+const PROXY_URL = 'https://kunitcan.chatium.ai/test-api-gemini/api/gemini/generate'
+const PROXY_SECRET = process.env.GEMINI_PROXY_SECRET || 'booklib_secret_2024_xK9mP3qR'
 
-if (!apiKey) {
-  throw new Error('GEMINI_API_KEY не задан в .env')
+const MAX_RETRIES = 5
+const BASE_DELAY_MS = 2000
+
+async function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-const genAI = new GoogleGenerativeAI(apiKey)
+async function callGemini(prompt: string): Promise<string> {
+  let lastError: Error | null = null
 
-// Retry-обёртка: 3 попытки с паузой 2с
-async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
-  for (let i = 0; i < attempts; i++) {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      return await fn()
-    } catch (error: any) {
-      const isRetryable = error?.status === 503 || error?.status === 429
-      if (isRetryable && i < attempts - 1) {
-        await new Promise(r => setTimeout(r, 2000 * (i + 1)))
+      const res = await fetch(PROXY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, secret: PROXY_SECRET }),
+      })
+
+      const data = await res.json() as { result?: string; error?: string }
+
+      if (data.result) {
+        return data.result
+      }
+
+      if (data.error?.includes('503') || data.error?.includes('UNAVAILABLE')) {
+        lastError = new Error(data.error)
+        const delay = BASE_DELAY_MS * attempt
+        console.warn(`Gemini 503, попытка ${attempt}/${MAX_RETRIES}, жду ${delay}ms...`)
+        await sleep(delay)
         continue
       }
-      if (error?.status === 429) throw new Error('Превышен лимит запросов к Gemini, попробуй позже')
-      if (error?.status === 503) throw new Error('Gemini временно недоступен, попробуй позже')
-      if (error?.status === 400) throw new Error('Некорректный запрос к Gemini')
-      throw new Error(`Ошибка Gemini: ${error?.message ?? 'неизвестная ошибка'}`)
+
+      throw new Error(data.error || 'Неизвестная ошибка Gemini')
+
+    } catch (err) {
+      if (err instanceof Error && (err.message.includes('503') || err.message.includes('UNAVAILABLE'))) {
+        lastError = err
+        const delay = BASE_DELAY_MS * attempt
+        await sleep(delay)
+        continue
+      }
+      throw err
     }
   }
-  throw new Error('Gemini не ответил после нескольких попыток')
+
+  throw new Error(`Gemini недоступен после ${MAX_RETRIES} попыток: ${lastError?.message}`)
 }
 
 export async function generateText(prompt: string): Promise<string> {
-  return withRetry(async () => {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
-    const result = await model.generateContent(prompt)
-    return result.response.text()
-  })
+  return callGemini(prompt)
 }
 
 export async function generateJSON<T>(prompt: string): Promise<T> {
-  return withRetry(async () => {
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      generationConfig: { responseMimeType: 'application/json' },
-    })
-    const result = await model.generateContent(prompt)
-    const text = result.response.text()
-    return JSON.parse(text) as T
-  })
+  const text = await callGemini(prompt)
+
+  // убираем markdown-обёртки если Gemini вернул ```json ... ```
+  const cleaned = text
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim()
+
+  try {
+    return JSON.parse(cleaned) as T
+  } catch {
+    throw new Error(`Gemini вернул не JSON: ${cleaned.slice(0, 200)}`)
+  }
 }
