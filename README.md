@@ -25,22 +25,79 @@
 
 ## 🗂 Структура репозитория
 book-diary/
+├── README.md
+│
 ├── backend/
 │   ├── prisma/
-│   │   └── schema.prisma        # модели: User, Book, Quote, Character
+│   │   ├── migrations/
+│   │   └── schema.prisma
 │   ├── src/
+│   │   ├── generated/
+│   │   │   └── prisma/
+│   │   │       ├── internal/
+│   │   │       ├── models/
+│   │   │       ├── browser.ts
+│   │   │       ├── client.ts
+│   │   │       ├── commonInputTypes.ts
+│   │   │       ├── enums.ts
+│   │   │       └── models.ts
 │   │   ├── lib/
-│   │   │   └── prisma.ts         # singleton Prisma Client
+│   │   │   └── prisma.ts
 │   │   ├── middleware/
-│   │   │   └── auth.ts           # проверка JWT, кладёт request.user
+│   │   │   └── auth.ts
 │   │   ├── routes/
-│   │   │   ├── books.ts          # CRUD книг
-│   │   │   ├── quotes.ts         # CRUD цитат
-│   │   │   └── characters.ts     # CRUD героев
-│   │   └── server.ts             # точка входа, регистрация роутов
+│   │   │   ├── auth.ts
+│   │   │   ├── books.ts
+│   │   │   ├── characters.ts
+│   │   │   └── quotes.ts
+│   │   ├── types/
+│   │   │   └── fastify.d.ts
+│   │   └── server.ts
+│   ├── .env                    ← секреты, не в git
+│   ├── .gitignore
 │   ├── docker-compose.yml
-│   └── Dockerfile
-└── frontend/                     # (в работе)
+│   ├── Dockerfile
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── prisma.config.ts
+│   └── tsconfig.json
+│
+└── frontend/
+    ├── public/
+    ├── src/
+    │   ├── api/
+    │   │   └── books.ts
+    │   ├── components/
+    │   │   ├── AddBookModal.vue
+    │   │   └── InlineField.vue
+    │   ├── lib/
+    │   │   └── api.ts
+    │   ├── pages/
+    │   │   ├── BookDetail.vue
+    │   │   ├── Login.vue
+    │   │   └── Shelf.vue
+    │   ├── router/
+    │   │   └── index.ts
+    │   ├── types/
+    │   │   ├── books.ts
+    │   │   ├── models.ts
+    │   │   └── telegram.d.ts
+    │   ├── App.vue
+    │   ├── main.ts
+    │   └── style.css
+    ├── .env.development
+    ├── .env.production
+    ├── .gitignore
+    ├── env.d.ts
+    ├── index.html
+    ├── package-lock.json
+    ├── package.json
+    ├── postcss.config.js
+    ├── tailwind.config.js
+    ├── tsconfig.app.json
+    ├── tsconfig.json
+    ├── tsconfig.node.json
+    └── vite.config.ts
 
 ---
 
