@@ -1,10 +1,8 @@
 import { FastifyInstance } from 'fastify'
 import { prisma } from '../lib/prisma.js'
 import { authMiddleware } from '../middleware/auth.js'
-import { writeFile, mkdir } from 'node:fs/promises'   
-import { join } from 'node:path'       
-import { pipeline } from 'node:stream/promises'
-import { createWriteStream } from 'node:fs'                
+import { writeFile, mkdir } from 'node:fs/promises'
+import { join } from 'node:path'
 
 // ── Переиспользуемые куски схем ──
 const idParam = {
@@ -15,10 +13,54 @@ const idParam = {
 
 const bookStatus = { type: 'string', enum: ['WANT', 'READING', 'READ'] }
 
+// ─── Вспомогательная функция: Google Books → Pollinations fallback ───
+async function fetchOrGenerateCover(
+  title: string,
+  author: string | null
+): Promise<string> {
+  // 1. Пробуем Google Books API
+  try {
+    const query = [title, author].filter(Boolean).join(' ')
+    const encoded = encodeURIComponent(query)
+    const gbRes = await fetch(
+      `https://www.googleapis.com/books/v1/volumes?q=${encoded}&maxResults=1&fields=items(volumeInfo/imageLinks)`,
+      { signal: AbortSignal.timeout(5000) }
+    )
+
+    if (gbRes.ok) {
+      const gbData = await gbRes.json()
+      const imageLinks = gbData?.items?.[0]?.volumeInfo?.imageLinks
+
+      if (imageLinks) {
+        const url =
+          imageLinks.extraLarge ??
+          imageLinks.large ??
+          imageLinks.medium ??
+          imageLinks.small ??
+          imageLinks.thumbnail
+
+        if (url) {
+          return url.replace(/^http:\/\//, 'https://')
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Google Books API недоступен, fallback на Pollinations:', e)
+  }
+
+  // 2. Fallback: Pollinations
+  const prompt = encodeURIComponent(
+    `book cover for "${title}"${author ? ` by ${author}` : ''}, ` +
+      `professional book cover design, high quality, detailed illustration, ` +
+      `publishing house style, dramatic lighting, no text`
+  )
+  return `https://image.pollinations.ai/prompt/${prompt}?width=400&height=600&nologo=true`
+}
+
 export default async function booksRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authMiddleware)
 
-  // ── 8.1.1 GET /books ──
+  // ── GET /books ──
   app.get('/books', async (request, reply) => {
     const userId = request.user!.userId
     const { status, genre, sort } = request.query as {
@@ -40,7 +82,7 @@ export default async function booksRoutes(app: FastifyInstance) {
     return books
   })
 
-  // ── 8.1.2 GET /books/:id ──
+  // ── GET /books/:id ──
   app.get(
     '/books/:id',
     { schema: { params: idParam } },
@@ -58,7 +100,7 @@ export default async function booksRoutes(app: FastifyInstance) {
     }
   )
 
-  // ── 8.1.3 POST /books ──
+  // ── POST /books ──
   app.post(
     '/books',
     {
@@ -104,7 +146,7 @@ export default async function booksRoutes(app: FastifyInstance) {
     }
   )
 
-  // ── 8.1.4 PATCH /books/:id ──
+  // ── PATCH /books/:id ──
   app.patch(
     '/books/:id',
     {
@@ -147,7 +189,7 @@ export default async function booksRoutes(app: FastifyInstance) {
     }
   )
 
-  // ── 8.1.5 DELETE /books/:id ──
+  // ── DELETE /books/:id ──
   app.delete(
     '/books/:id',
     { schema: { params: idParam } },
@@ -163,7 +205,7 @@ export default async function booksRoutes(app: FastifyInstance) {
     }
   )
 
-    // ── 10.1.2 POST /books/:id/cover ──
+  // ── POST /books/:id/cover (загрузка файла) ──
   app.post(
     '/books/:id/cover',
     { schema: { params: idParam } },
@@ -171,15 +213,12 @@ export default async function booksRoutes(app: FastifyInstance) {
       const userId = request.user!.userId
       const { id } = request.params as { id: number }
 
-      // проверяем что книга есть и принадлежит юзеру
       const existing = await prisma.book.findFirst({ where: { id, userId } })
       if (!existing) return reply.code(404).send({ error: 'Book not found' })
 
-      // получаем файл
       const data = await request.file()
       if (!data) return reply.code(400).send({ error: 'No file uploaded' })
 
-      // валидация типа
       const allowedMime: Record<string, string> = {
         'image/jpeg': 'jpg',
         'image/png': 'png',
@@ -192,7 +231,6 @@ export default async function booksRoutes(app: FastifyInstance) {
           .send({ error: 'Unsupported format. Use jpg, png or webp' })
       }
 
-      // читаем содержимое (тут же сработает лимит 5 МБ из конфига)
       let buffer: Buffer
       try {
         buffer = await data.toBuffer()
@@ -200,17 +238,13 @@ export default async function booksRoutes(app: FastifyInstance) {
         return reply.code(413).send({ error: 'File too large (max 5MB)' })
       }
 
-      // папка для загрузок
       const uploadsDir = join(process.cwd(), 'uploads', 'covers')
       await mkdir(uploadsDir, { recursive: true })
 
-      // уникальное имя
       const filename = `${id}-${Date.now()}.${ext}`
       await writeFile(join(uploadsDir, filename), buffer)
 
-      // путь, по которому файл будет отдаваться наружу
       const coverUrl = `/uploads/covers/${filename}`
-
       const updated = await prisma.book.update({
         where: { id },
         data: { coverUrl },
@@ -220,79 +254,43 @@ export default async function booksRoutes(app: FastifyInstance) {
     }
   )
 
-  // ─── Вспомогательная функция: Google Books → Pollinations fallback ───
-  async function fetchOrGenerateCover(title: string, author: string | null): Promise<string> {
-    // 1. Пробуем Google Books API
-    try {
-      const query = [title, author].filter(Boolean).join(' ')
-      const encoded = encodeURIComponent(query)
-      const gbRes = await fetch(
-        `https://www.googleapis.com/books/v1/volumes?q=${encoded}&maxResults=1&fields=items(volumeInfo/imageLinks)`,
-        { signal: AbortSignal.timeout(5000) }
-      )
+  // ── POST /books/:id/generate-cover (AI + Google Books) ──
+  app.post(
+    '/books/:id/generate-cover',
+    { schema: { params: idParam } },
+    async (request, reply) => {
+      const userId = request.user!.userId
+      const { id } = request.params as { id: number }
 
-      if (gbRes.ok) {
-        const gbData = await gbRes.json()
-        const imageLinks = gbData?.items?.[0]?.volumeInfo?.imageLinks
+      const book = await prisma.book.findFirst({ where: { id, userId } })
+      if (!book) return reply.code(404).send({ error: 'Book not found' })
 
-        if (imageLinks) {
-          // Берём максимальное доступное качество
-          const url =
-            imageLinks.extraLarge ??
-            imageLinks.large ??
-            imageLinks.medium ??
-            imageLinks.small ??
-            imageLinks.thumbnail
+      try {
+        const coverUrl = await fetchOrGenerateCover(book.title, book.author)
 
-          if (url) {
-            // Google Books отдаёт http — форсируем https
-            return url.replace(/^http:\/\//, 'https://')
-          }
-        }
+        // Скачиваем и сохраняем локально
+        const imageRes = await fetch(coverUrl)
+        if (!imageRes.ok) throw new Error('Не удалось скачать обложку')
+
+        const buffer = Buffer.from(await imageRes.arrayBuffer())
+
+        const uploadsDir = join(process.cwd(), 'uploads', 'covers')
+        await mkdir(uploadsDir, { recursive: true })
+
+        const filename = `ai-${id}-${Date.now()}.jpg`
+        await writeFile(join(uploadsDir, filename), buffer)
+
+        const updated = await prisma.book.update({
+          where: { id },
+          data: { coverUrl: `/uploads/covers/${filename}` },
+          include: { quotes: true, characters: true },
+        })
+
+        return updated
+      } catch (e) {
+        console.error('generate-cover error:', e)
+        return reply.code(500).send({ error: 'Ошибка генерации обложки' })
       }
-    } catch (e) {
-      console.warn('Google Books API недоступен, fallback на Pollinations:', e)
     }
-
-    // 2. Fallback: Pollinations с детальным промптом
-    const prompt = encodeURIComponent(
-      `book cover for "${title}"${author ? ` by ${author}` : ''}, ` +
-      `professional book cover design, high quality, detailed illustration, ` +
-      `publishing house style, dramatic lighting, no text`
-    )
-    return `https://image.pollinations.ai/prompt/${prompt}?width=400&height=600&nologo=true`
-  }
-
-  // POST /books/:id/generate-cover
-  router.post('/:id/generate-cover', requireAuth, async (req, res) => {
-    const id = Number(req.params.id)
-    const book = await prisma.book.findFirst({
-      where: { id, userId: req.userId },
-    })
-    if (!book) return res.status(404).json({ message: 'Книга не найдена' })
-
-    try {
-      const coverUrl = await fetchOrGenerateCover(book.title, book.author)
-
-      // Скачиваем картинку и сохраняем локально
-      const imageRes = await fetch(coverUrl)
-      if (!imageRes.ok) throw new Error('Не удалось скачать обложку')
-
-      const buffer = Buffer.from(await imageRes.arrayBuffer())
-      const filename = `ai-${id}-${Date.now()}.jpg`
-      const filepath = path.join(uploadsDir, filename)
-      await fs.writeFile(filepath, buffer)
-
-      const updated = await prisma.book.update({
-        where: { id },
-        data: { coverUrl: `/uploads/covers/${filename}` },
-        include: { quotes: true, characters: true },
-      })
-
-      return res.json(updated)
-    } catch (e) {
-      console.error('generate-cover error:', e)
-      return res.status(500).json({ message: 'Ошибка генерации обложки' })
-    }
-  })
+  )
 }
