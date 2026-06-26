@@ -29,22 +29,11 @@
           class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 rounded-xl gap-2"
         >
           <span class="text-2xl animate-spin">⏳</span>
-          <span class="text-xs text-white">Генерирую…</span>
+          <span class="text-xs text-white">Ищу обложку…</span>
         </div>
       </div>
 
-      <!-- Кнопка загрузки вручную -->
-      <label class="cursor-pointer rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-200">
-        {{ book.coverUrl ? '🔄 Заменить обложку' : '📷 Добавить обложку' }}
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          class="hidden"
-          @change="onCoverChange"
-        />
-      </label>
-
-      <!-- Кнопка AI-генерации -->
+      <!-- Одна главная кнопка -->
       <button
         @click="onGenerateCover"
         :disabled="coverGenerating || coverUploading"
@@ -52,10 +41,21 @@
       >
         <span v-if="coverGenerating" class="animate-spin">⏳</span>
         <span v-else>✨</span>
-        {{ coverGenerating ? 'Генерирую…' : (book.coverUrl ? 'Перегенерировать AI' : 'Сгенерировать AI') }}
+        {{ coverGenerating ? 'Ищу обложку…' : 'Найти обложку' }}
       </button>
 
-      <p v-if="coverUploading" class="text-xs text-gray-400">Загружаю…</p>
+      <!-- Загрузка вручную — маленькая ссылка под кнопкой -->
+      <label class="cursor-pointer text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2">
+        {{ coverUploading ? 'Загружаю…' : 'или загрузить свою' }}
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          class="hidden"
+          :disabled="coverUploading || coverGenerating"
+          @change="onCoverChange"
+        />
+      </label>
+
       <p v-if="coverError" class="text-xs text-red-500">{{ coverError }}</p>
     </div>
 
