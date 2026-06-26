@@ -8,7 +8,8 @@ import { authRoutes } from './routes/auth.js'
 import booksRoutes from './routes/books.js'
 import quotesRoutes from './routes/quotes.js'
 import charactersRoutes from './routes/characters.js'
-import aiRoutes from './routes/ai.js'          
+import aiRoutes from './routes/ai.js'      
+    
 
 const app = Fastify({ logger: true })
 

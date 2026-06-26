@@ -22,7 +22,8 @@ async function fetchOrGenerateCover(
   try {
     const query = [title, author].filter(Boolean).join(' ')
     const encoded = encodeURIComponent(query)
-    const gbUrl = `https://www.googleapis.com/books/v1/volumes?q=${encoded}&maxResults=3`
+    const apiKey = process.env.GOOGLE_BOOKS_API_KEY
+    const gbUrl = `https://www.googleapis.com/books/v1/volumes?q=${encoded}&maxResults=3${apiKey ? `&key=${apiKey}` : ''}`
 
     console.log('[cover] Google Books запрос:', gbUrl)
 
