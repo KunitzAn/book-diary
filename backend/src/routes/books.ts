@@ -17,44 +17,85 @@ const bookStatus = { type: 'string', enum: ['WANT', 'READING', 'READ'] }
 async function fetchOrGenerateCover(
   title: string,
   author: string | null
-): Promise<string> {
+): Promise<{ url: string; source: 'google' | 'pollinations' }> {
   // 1. Пробуем Google Books API
   try {
     const query = [title, author].filter(Boolean).join(' ')
     const encoded = encodeURIComponent(query)
-    const gbRes = await fetch(
-      `https://www.googleapis.com/books/v1/volumes?q=${encoded}&maxResults=1&fields=items(volumeInfo/imageLinks)`,
-      { signal: AbortSignal.timeout(5000) }
-    )
+    const gbUrl = `https://www.googleapis.com/books/v1/volumes?q=${encoded}&maxResults=3`
+
+    console.log('[cover] Google Books запрос:', gbUrl)
+
+    const gbRes = await fetch(gbUrl, { signal: AbortSignal.timeout(6000) })
+    console.log('[cover] Google Books статус:', gbRes.status)
 
     if (gbRes.ok) {
       const gbData = await gbRes.json()
-      const imageLinks = gbData?.items?.[0]?.volumeInfo?.imageLinks
+      const items = gbData?.items ?? []
+      console.log('[cover] Google Books найдено книг:', items.length)
 
-      if (imageLinks) {
-        const url =
+      for (const item of items) {
+        const imageLinks = item?.volumeInfo?.imageLinks
+        if (!imageLinks) continue
+
+        const raw =
           imageLinks.extraLarge ??
           imageLinks.large ??
           imageLinks.medium ??
           imageLinks.small ??
-          imageLinks.thumbnail
+          imageLinks.thumbnail ??
+          imageLinks.smallThumbnail
 
-        if (url) {
-          return url.replace(/^http:\/\//, 'https://')
+        if (!raw) continue
+
+        const url = raw
+          .replace(/^http:\/\//, 'https://')
+          .replace(/&zoom=\d/, '&zoom=1')
+          .replace(/&edge=curl/, '')
+
+        console.log('[cover] Google Books URL найден:', url)
+
+        try {
+          const testRes = await fetch(url, {
+            signal: AbortSignal.timeout(5000),
+            redirect: 'follow',
+          })
+          console.log(
+            '[cover] Google Books картинка статус:',
+            testRes.status,
+            'size:',
+            testRes.headers.get('content-length')
+          )
+
+          if (testRes.ok) {
+            const ct = testRes.headers.get('content-type') ?? ''
+            if (ct.startsWith('image/')) {
+              return { url, source: 'google' }
+            }
+            console.warn('[cover] Google вернул не картинку, content-type:', ct)
+          }
+        } catch (fetchErr) {
+          console.warn('[cover] Не удалось проверить картинку:', fetchErr)
         }
       }
+
+      console.warn('[cover] Google Books: книги найдены но обложки не подошли')
     }
   } catch (e) {
-    console.warn('Google Books API недоступен, fallback на Pollinations:', e)
+    console.warn('[cover] Google Books API ошибка:', e)
   }
 
   // 2. Fallback: Pollinations
+  console.log('[cover] Используем Pollinations fallback')
   const prompt = encodeURIComponent(
-    `book cover for "${title}"${author ? ` by ${author}` : ''}, ` +
-      `professional book cover design, high quality, detailed illustration, ` +
-      `publishing house style, dramatic lighting, no text`
+    `book cover "${title}"${author ? ` by ${author}` : ''}, ` +
+      `professional publishing house design, detailed illustration, ` +
+      `dramatic lighting, no text, no words`
   )
-  return `https://image.pollinations.ai/prompt/${prompt}?width=400&height=600&nologo=true`
+  return {
+    url: `https://image.pollinations.ai/prompt/${prompt}?width=400&height=600&nologo=true&seed=${Date.now()}`,
+    source: 'pollinations',
+  }
 }
 
 export default async function booksRoutes(app: FastifyInstance) {
@@ -254,7 +295,7 @@ export default async function booksRoutes(app: FastifyInstance) {
     }
   )
 
-  // ── POST /books/:id/generate-cover (AI + Google Books) ──
+  // ── POST /books/:id/generate-cover (Google Books → Pollinations) ──
   app.post(
     '/books/:id/generate-cover',
     { schema: { params: idParam } },
@@ -265,19 +306,39 @@ export default async function booksRoutes(app: FastifyInstance) {
       const book = await prisma.book.findFirst({ where: { id, userId } })
       if (!book) return reply.code(404).send({ error: 'Book not found' })
 
-      try {
-        const coverUrl = await fetchOrGenerateCover(book.title, book.author)
+      console.log(`[cover] Запрос обложки для: "${book.title}" / "${book.author}"`)
 
-        // Скачиваем и сохраняем локально
-        const imageRes = await fetch(coverUrl)
-        if (!imageRes.ok) throw new Error('Не удалось скачать обложку')
+      try {
+        const { url, source } = await fetchOrGenerateCover(book.title, book.author)
+        console.log(`[cover] Источник: ${source}, URL: ${url}`)
+
+        const imageRes = await fetch(url, {
+          redirect: 'follow',
+          signal: AbortSignal.timeout(15000),
+        })
+
+        if (!imageRes.ok) {
+          throw new Error(`HTTP ${imageRes.status} при скачивании обложки`)
+        }
+
+        const contentType = imageRes.headers.get('content-type') ?? 'image/jpeg'
+        const ext = contentType.includes('png')
+          ? 'png'
+          : contentType.includes('webp')
+          ? 'webp'
+          : 'jpg'
 
         const buffer = Buffer.from(await imageRes.arrayBuffer())
+        console.log(`[cover] Скачано ${buffer.length} байт, тип: ${contentType}`)
+
+        if (buffer.length < 1000) {
+          throw new Error(`Слишком маленький файл: ${buffer.length} байт`)
+        }
 
         const uploadsDir = join(process.cwd(), 'uploads', 'covers')
         await mkdir(uploadsDir, { recursive: true })
 
-        const filename = `ai-${id}-${Date.now()}.jpg`
+        const filename = `${source}-${id}-${Date.now()}.${ext}`
         await writeFile(join(uploadsDir, filename), buffer)
 
         const updated = await prisma.book.update({
@@ -286,9 +347,10 @@ export default async function booksRoutes(app: FastifyInstance) {
           include: { quotes: true, characters: true },
         })
 
+        console.log(`[cover] Готово: /uploads/covers/${filename}`)
         return updated
       } catch (e) {
-        console.error('generate-cover error:', e)
+        console.error('[cover] Ошибка:', e)
         return reply.code(500).send({ error: 'Ошибка генерации обложки' })
       }
     }
