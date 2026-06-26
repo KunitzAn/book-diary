@@ -12,30 +12,52 @@
 
     <div v-else-if="book" class="p-4 flex flex-col gap-4">
 
-      <!-- Обложка -->
-      <div class="mx-auto flex flex-col items-center gap-2">
-        <div class="flex h-44 w-30 items-center justify-center rounded-xl bg-gray-200 shadow overflow-hidden">
-          <img
-            v-if="book.coverUrl"
-            :src="apiBase + book.coverUrl"
-            alt="Обложка"
-            class="h-full w-full object-cover"
-          />
-          <span v-else class="text-5xl">📖</span>
-        </div>
+    <!-- Обложка -->
+    <div class="mx-auto flex flex-col items-center gap-2">
+      <div class="flex h-44 w-30 items-center justify-center rounded-xl bg-gray-200 shadow overflow-hidden relative">
+        <img
+          v-if="book.coverUrl"
+          :src="apiBase + book.coverUrl"
+          alt="Обложка"
+          class="h-full w-full object-cover"
+        />
+        <span v-else class="text-5xl">📖</span>
 
-        <label class="cursor-pointer rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-200">
-          {{ book.coverUrl ? '🔄 Заменить обложку' : '📷 Добавить обложку' }}
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            class="hidden"
-            @change="onCoverChange"
-          />
-        </label>
-        <p v-if="coverUploading" class="text-xs text-gray-400">Загружаю…</p>
-        <p v-if="coverError" class="text-xs text-red-500">{{ coverError }}</p>
+        <!-- Лоадер поверх обложки во время генерации -->
+        <div
+          v-if="coverGenerating"
+          class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 rounded-xl gap-2"
+        >
+          <span class="text-2xl animate-spin">⏳</span>
+          <span class="text-xs text-white">Генерирую…</span>
+        </div>
       </div>
+
+      <!-- Кнопка загрузки вручную -->
+      <label class="cursor-pointer rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-200">
+        {{ book.coverUrl ? '🔄 Заменить обложку' : '📷 Добавить обложку' }}
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          class="hidden"
+          @change="onCoverChange"
+        />
+      </label>
+
+      <!-- Кнопка AI-генерации -->
+      <button
+        @click="onGenerateCover"
+        :disabled="coverGenerating || coverUploading"
+        class="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+      >
+        <span v-if="coverGenerating" class="animate-spin">⏳</span>
+        <span v-else>✨</span>
+        {{ coverGenerating ? 'Генерирую…' : (book.coverUrl ? 'Перегенерировать AI' : 'Сгенерировать AI') }}
+      </button>
+
+      <p v-if="coverUploading" class="text-xs text-gray-400">Загружаю…</p>
+      <p v-if="coverError" class="text-xs text-red-500">{{ coverError }}</p>
+    </div>
 
       <!-- Основные поля -->
       <div class="rounded-2xl bg-white p-4 shadow-sm flex flex-col gap-4">
@@ -297,6 +319,7 @@ import {
   uploadCover,
   generateSummary,
   generateCharacters,
+  generateCover,
 } from '../api/books'
 import type { Book, Quote, Character, Status } from '../types/models'
 import InlineField from '../components/InlineField.vue'
@@ -355,6 +378,24 @@ async function onCoverChange(e: Event) {
   } finally {
     coverUploading.value = false
     ;(e.target as HTMLInputElement).value = ''
+  }
+}
+
+// ─── AI: обложка ──────────────────────────────────────────
+const coverGenerating = ref(false)
+
+async function onGenerateCover() {
+  if (!book.value) return
+  coverGenerating.value = true
+  coverError.value = ''
+  try {
+    book.value = await generateCover(book.value.id)
+    book.value.quotes ??= []
+    book.value.characters ??= []
+  } catch (e) {
+    coverError.value = e instanceof Error ? e.message : 'Ошибка генерации обложки'
+  } finally {
+    coverGenerating.value = false
   }
 }
 

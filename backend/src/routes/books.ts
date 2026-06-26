@@ -2,7 +2,9 @@ import { FastifyInstance } from 'fastify'
 import { prisma } from '../lib/prisma.js'
 import { authMiddleware } from '../middleware/auth.js'
 import { writeFile, mkdir } from 'node:fs/promises'   
-import { join } from 'node:path'                       
+import { join } from 'node:path'       
+import { pipeline } from 'node:stream/promises'
+import { createWriteStream } from 'node:fs'                
 
 // ── Переиспользуемые куски схем ──
 const idParam = {
@@ -207,6 +209,74 @@ export default async function booksRoutes(app: FastifyInstance) {
       await writeFile(join(uploadsDir, filename), buffer)
 
       // путь, по которому файл будет отдаваться наружу
+      const coverUrl = `/uploads/covers/${filename}`
+
+      const updated = await prisma.book.update({
+        where: { id },
+        data: { coverUrl },
+      })
+
+      return updated
+    }
+  )
+
+    // ── C.2 POST /books/:id/generate-cover ──
+  app.post(
+    '/books/:id/generate-cover',
+    { schema: { params: idParam } },
+    async (request, reply) => {
+      const userId = request.user!.userId
+      const { id } = request.params as { id: number }
+
+      // проверяем что книга есть и принадлежит юзеру
+      const book = await prisma.book.findFirst({ where: { id, userId } })
+      if (!book) return reply.code(404).send({ error: 'Book not found' })
+
+      // собираем промпт
+      const parts = [
+        `book cover for "${book.title}" by ${book.author}`,
+        book.genre ? `genre: ${book.genre}` : '',
+        'professional illustration, high quality, artistic, no text',
+      ].filter(Boolean)
+      const prompt = parts.join(', ')
+
+      // URL Pollinations — GET-запрос, отдаёт jpeg напрямую
+      const encodedPrompt = encodeURIComponent(prompt)
+      const pollinationsUrl =
+        `https://image.pollinations.ai/prompt/${encodedPrompt}` +
+        `?width=400&height=600&nologo=true&model=flux`
+
+      // скачиваем картинку
+      let response: Response
+      try {
+        response = await fetch(pollinationsUrl, { signal: AbortSignal.timeout(60_000) })
+      } catch (err) {
+        app.log.error(err, 'Pollinations fetch failed')
+        return reply.code(502).send({ error: 'Image generation service unavailable' })
+      }
+
+      if (!response.ok) {
+        app.log.error(`Pollinations returned ${response.status}`)
+        return reply.code(502).send({ error: 'Image generation failed' })
+      }
+
+      // сохраняем файл
+      const uploadsDir = join(process.cwd(), 'uploads', 'covers')
+      await mkdir(uploadsDir, { recursive: true })
+
+      const filename = `${id}-${Date.now()}-ai.jpg`
+      const filepath = join(uploadsDir, filename)
+
+      try {
+        await pipeline(
+          response.body as unknown as NodeJS.ReadableStream,
+          createWriteStream(filepath)
+        )
+      } catch (err) {
+        app.log.error(err, 'Failed to save generated cover')
+        return reply.code(500).send({ error: 'Failed to save image' })
+      }
+
       const coverUrl = `/uploads/covers/${filename}`
 
       const updated = await prisma.book.update({

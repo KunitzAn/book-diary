@@ -121,3 +121,9 @@ export function generateCharacters(bookId: number): Promise<{ characters: Charac
     method: 'POST',
   })
 }
+
+export function generateCover(bookId: number): Promise<Book> {
+  return apiFetch<Book>(`/books/${bookId}/generate-cover`, {
+    method: 'POST',
+  })
+}
