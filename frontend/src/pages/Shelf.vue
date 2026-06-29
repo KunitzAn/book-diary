@@ -49,7 +49,7 @@
       :delay-on-touch-only="true"
       @end="onReorder"
     >
-      <template #item="{ element: book }">
+      <template #item="{ element: book }: { element: Book }">
         <router-link
           :to="`/book/${book.id}`"
           class="glass-card group flex cursor-grab flex-col overflow-hidden active:cursor-grabbing"
