@@ -17,7 +17,7 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/books/:id',
+      path: '/book/:id',
       component: BookDetail,
       meta: { requiresAuth: true },
       props: true,
