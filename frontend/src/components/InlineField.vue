@@ -1,7 +1,6 @@
-<!-- src/components/InlineField.vue -->
 <template>
   <div>
-    <p class="mb-0.5 text-xs font-medium uppercase tracking-wide text-gray-400">
+    <p class="mb-1 text-xs font-medium uppercase tracking-wide text-gray-400">
       {{ label }}
     </p>
 
@@ -9,25 +8,25 @@
     <div
       v-if="!editing"
       @click="startEdit"
-      class="cursor-pointer rounded-lg px-2 py-1 text-sm hover:bg-gray-50 flex items-center gap-1"
+      class="group flex cursor-pointer items-center gap-1.5 rounded-2xl px-3 py-2 text-sm transition hover:bg-white/60"
     >
       <span :class="displayValue ? 'text-gray-900' : 'text-gray-400'">
         {{ displayValue || placeholder }}
       </span>
-      <span class="text-xs text-gray-300">✎</span>
+      <span class="text-xs text-gray-300 opacity-0 transition group-hover:opacity-100">✎</span>
     </div>
 
     <!-- Редактирование -->
-    <div v-else class="flex gap-2 items-center">
+    <div v-else class="flex items-center gap-2">
       <input
         ref="inputRef"
         v-model="draft"
         :type="type"
-        class="flex-1 rounded-lg border border-blue-400 px-2 py-1 text-sm outline-none"
+        class="field flex-1"
         @keydown.enter="save"
         @keydown.escape="cancel"
       />
-      <button @click="save" class="text-sm font-medium text-blue-600">OK</button>
+      <button @click="save" class="text-sm font-semibold text-accent-violet">OK</button>
       <button @click="cancel" class="text-sm text-gray-400">✕</button>
     </div>
   </div>
@@ -53,7 +52,6 @@ const draft = ref('')
 const displayValue = ref(props.value)
 const inputRef = ref<HTMLInputElement | null>(null)
 
-// синхронизируем если пропс изменился снаружи
 watch(() => props.value, v => { displayValue.value = v })
 
 async function startEdit() {

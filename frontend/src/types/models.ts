@@ -1,3 +1,4 @@
+// frontend/src/types/models.ts
 export type Status = 'WANT' | 'READING' | 'READ'
 
 export interface Book {
@@ -10,8 +11,9 @@ export interface Book {
   rating?: number | null
   notes?: string | null
   summary?: string | null
-  vibeTags?: string[]      // ← добавили
+  vibeTags?: string[]
   coverUrl?: string | null
+  position?: number          // ← для drag&drop
   quotes?: Quote[]
   characters?: Character[]
   createdAt: string
@@ -31,12 +33,10 @@ export interface Character {
   description: string | null
 }
 
-// Удобные подписи статусов для UI
 export const STATUS_LABELS: Record<Status, string> = {
   WANT: 'Хочу прочитать',
   READING: 'Читаю',
   READ: 'Прочитано',
 }
 
-// Варианты сортировки полки (под ?sort= на бэке)
 export type SortBy = 'date' | 'rating' | 'author'

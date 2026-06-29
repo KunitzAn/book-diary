@@ -24,7 +24,7 @@ export function getBook(id: number): Promise<Book> {
 }
 
 export type BookInput = Partial<
-  Pick<Book, 'title' | 'author' | 'genre' | 'year' | 'status' | 'rating' | 'coverUrl' | 'notes' | 'summary'>
+  Pick<Book, 'title' | 'author' | 'genre' | 'year' | 'status' | 'rating' | 'coverUrl' | 'notes' | 'summary' | 'position'>
 >
 
 export function createBook(data: BookInput): Promise<Book> {

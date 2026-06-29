@@ -1,97 +1,100 @@
 <template>
-  <div class="min-h-screen bg-gray-50 pb-10">
+  <div class="px-4 py-6 sm:px-6">
 
     <!-- Шапка -->
-    <div class="flex items-center gap-3 bg-white px-4 py-4 shadow-sm">
-      <button @click="router.back()" class="text-xl text-gray-600">←</button>
+    <div class="glass mb-5 flex items-center gap-3 rounded-2xl px-4 py-3">
+      <button
+        @click="router.back()"
+        class="flex h-8 w-8 items-center justify-center rounded-full text-lg text-gray-600 transition hover:bg-white/60"
+      >←</button>
       <h1 class="truncate text-lg font-semibold">{{ book?.title ?? '…' }}</h1>
     </div>
 
-    <div v-if="loading" class="p-6 text-gray-500">Загрузка…</div>
-    <div v-else-if="error" class="p-6 text-red-600">{{ error }}</div>
-
-    <div v-else-if="book" class="p-4 flex flex-col gap-4">
-
-    <!-- Обложка -->
-    <div class="mx-auto flex flex-col items-center gap-2">
-      <div class="flex h-44 w-30 items-center justify-center rounded-xl bg-gray-200 shadow overflow-hidden relative">
-        <img
-          v-if="book.coverUrl"
-          :src="apiBase + book.coverUrl"
-          alt="Обложка"
-          class="h-full w-full object-cover"
-        />
-        <span v-else class="text-5xl">📖</span>
-
-        <div
-          v-if="coverGenerating"
-          class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 rounded-xl gap-2"
-        >
-          <span class="text-2xl animate-spin">⏳</span>
-          <span class="text-xs text-white">Ищу обложку…</span>
-        </div>
-      </div>
-
-      <button
-        @click="onGenerateCover"
-        :disabled="coverGenerating || coverUploading"
-        class="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
-      >
-        <span v-if="coverGenerating" class="animate-spin">⏳</span>
-        <span v-else>✨</span>
-        {{ coverGenerating ? 'Ищу обложку…' : 'Найти обложку' }}
-      </button>
-
-      <label class="cursor-pointer text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2">
-        {{ coverUploading ? 'Загружаю…' : 'или загрузить свою' }}
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          class="hidden"
-          :disabled="coverUploading || coverGenerating"
-          @change="onCoverChange"
-        />
-      </label>
-
-      <p v-if="coverError" class="text-xs text-red-500">{{ coverError }}</p>
+    <!-- Загрузка -->
+    <div v-if="loading" class="flex flex-col gap-4">
+      <div class="glass-card mx-auto h-44 w-32 animate-pulse rounded-2xl bg-white/50"></div>
+      <div class="glass-card h-32 animate-pulse"></div>
+      <div class="glass-card h-40 animate-pulse"></div>
     </div>
 
+    <!-- Ошибка -->
+    <div v-else-if="error" class="glass-card animate-fade-in p-6 text-center">
+      <p class="text-3xl">😕</p>
+      <p class="mt-2 text-sm text-red-500">{{ error }}</p>
+    </div>
+
+    <div v-else-if="book" class="flex animate-fade-in flex-col gap-4">
+
+      <!-- Обложка -->
+      <div class="mx-auto flex flex-col items-center gap-2">
+        <div class="relative flex h-44 w-32 items-center justify-center overflow-hidden rounded-2xl border border-white/50 bg-gradient-to-br from-white/60 to-white/20 shadow-glass">
+          <img
+            v-if="book.coverUrl"
+            :src="apiBase + book.coverUrl"
+            alt="Обложка"
+            class="h-full w-full object-cover"
+          />
+          <span v-else class="text-5xl opacity-50">📖</span>
+
+          <div
+            v-if="coverGenerating"
+            class="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl bg-black/40 backdrop-blur-sm"
+          >
+            <span class="animate-spin text-2xl">⏳</span>
+            <span class="text-xs text-white">Ищу обложку…</span>
+          </div>
+        </div>
+
+        <button
+          @click="onGenerateCover"
+          :disabled="coverGenerating || coverUploading"
+          class="btn-ai-ghost"
+        >
+          <span v-if="coverGenerating" class="animate-spin">⏳</span>
+          <span v-else>✨</span>
+          {{ coverGenerating ? 'Ищу обложку…' : 'Найти обложку' }}
+        </button>
+
+        <label class="cursor-pointer text-xs text-gray-400 underline underline-offset-2 hover:text-gray-600">
+          {{ coverUploading ? 'Загружаю…' : 'или загрузить свою' }}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            class="hidden"
+            :disabled="coverUploading || coverGenerating"
+            @change="onCoverChange"
+          />
+        </label>
+      </div>
+
       <!-- Основные поля -->
-      <div class="rounded-2xl bg-white p-4 shadow-sm flex flex-col gap-4">
-        <InlineField label="Название" :value="book.title"
-          @save="v => patch({ title: v })" />
-        <InlineField label="Автор" :value="book.author"
-          @save="v => patch({ author: v })" />
+      <div class="glass-card flex flex-col gap-4 p-4">
+        <InlineField label="Название" :value="book.title" @save="v => patch({ title: v })" />
+        <InlineField label="Автор" :value="book.author" @save="v => patch({ author: v })" />
         <InlineField label="Жанр" :value="book.genre ?? ''" placeholder="не указан"
           @save="v => patch({ genre: v || null })" />
         <InlineField label="Год" :value="book.year ? String(book.year) : ''"
           placeholder="не указан" type="number"
           @save="v => patch({ year: v ? Number(v) : null })" />
 
-        <!-- F4: AI жанр и год -->
-        <button
-          @click="generateGenreYearAI"
-          :disabled="genreYearLoading"
-          class="self-start flex items-center gap-1.5 rounded-lg bg-purple-50 px-3 py-1.5 text-xs font-medium text-purple-600 hover:bg-purple-100 disabled:opacity-50"
-        >
+        <button @click="generateGenreYearAI" :disabled="genreYearLoading" class="btn-ai-ghost self-start">
           <span v-if="genreYearLoading" class="animate-spin">⏳</span>
           <span v-else>✨</span>
           {{ genreYearLoading ? 'Определяю…' : 'Определить жанр и год (AI)' }}
         </button>
-        <p v-if="genreYearError" class="text-xs text-red-500">{{ genreYearError }}</p>
       </div>
 
       <!-- Статус -->
-      <div class="rounded-2xl bg-white p-4 shadow-sm">
+      <div class="glass-card p-4">
         <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">Статус</p>
         <div class="flex gap-2">
           <button
             v-for="s in statuses" :key="s.value"
             @click="patch({ status: s.value })"
-            class="flex-1 rounded-full py-1.5 text-sm font-medium transition"
+            class="flex-1 rounded-full py-1.5 text-sm font-medium transition active:scale-95"
             :class="book.status === s.value
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+              ? 'bg-gradient-to-r from-accent-violet to-accent-blue text-white shadow-glow-violet'
+              : 'bg-white/50 text-gray-600 hover:bg-white/70'"
           >
             {{ s.label }}
           </button>
@@ -99,13 +102,13 @@
       </div>
 
       <!-- Рейтинг -->
-      <div class="rounded-2xl bg-white p-4 shadow-sm">
+      <div class="glass-card p-4">
         <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">Рейтинг</p>
         <div class="flex gap-0.5">
           <button
             v-for="n in 10" :key="n"
             @click="patch({ rating: book.rating === n ? null : n })"
-            class="text-xl transition"
+            class="text-xl transition active:scale-90"
             :class="(book.rating ?? 0) >= n ? 'opacity-100' : 'opacity-20'"
           >⭐</button>
         </div>
@@ -115,15 +118,15 @@
       </div>
 
       <!-- Вкладки -->
-      <div class="rounded-2xl bg-white shadow-sm overflow-hidden">
-
-        <div class="flex border-b border-gray-100">
+      <div class="glass-card overflow-hidden">
+        <!-- Скролл по горизонтали на мобиле -->
+        <div class="flex border-b border-white/40 overflow-x-auto">
           <button
             v-for="tab in tabs" :key="tab.id"
             @click="activeTab = tab.id"
-            class="flex-1 py-3 text-sm font-medium transition"
+            class="flex-1 whitespace-nowrap px-4 py-3 text-sm font-medium transition"
             :class="activeTab === tab.id
-              ? 'border-b-2 border-blue-600 text-blue-600'
+              ? 'border-b-2 border-accent-violet text-accent-violet'
               : 'text-gray-400 hover:text-gray-600'"
           >
             {{ tab.label }}
@@ -132,30 +135,20 @@
 
         <!-- Заметки -->
         <div v-if="activeTab === 'notes'" class="p-4">
-          <textarea
-            v-model="notesValue"
-            rows="6"
-            placeholder="Свои мысли о книге…"
-            class="w-full resize-none rounded-lg border border-gray-200 p-3 text-sm outline-none focus:border-blue-400"
-          />
-          <button
-            @click="saveNotes"
-            :disabled="notesSaving"
-            class="mt-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {{ notesSaving ? 'Сохраняю…' : 'Сохранить' }}
-          </button>
-          <span v-if="notesSaved" class="ml-3 text-sm text-green-600">✓ Сохранено</span>
+          <textarea v-model="notesValue" rows="6" placeholder="Свои мысли о книге…"
+            class="field resize-none" />
+          <div class="mt-2 flex items-center">
+            <button @click="saveNotes" :disabled="notesSaving" class="btn-primary">
+              {{ notesSaving ? 'Сохраняю…' : 'Сохранить' }}
+            </button>
+            <span v-if="notesSaved" class="ml-3 text-sm text-emerald-600">✓ Сохранено</span>
+          </div>
 
-          <!-- F2: Вайб книги -->
-          <div class="mt-6 border-t border-gray-100 pt-4">
-            <div class="flex items-center justify-between mb-2">
+          <!-- Вайб -->
+          <div class="mt-6 border-t border-white/40 pt-4">
+            <div class="mb-2 flex items-center justify-between">
               <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Вайб книги</p>
-              <button
-                @click="generateVibeAI"
-                :disabled="vibeLoading"
-                class="flex items-center gap-1 rounded-lg bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-600 hover:bg-purple-100 disabled:opacity-50"
-              >
+              <button @click="generateVibeAI" :disabled="vibeLoading" class="btn-ai-ghost">
                 <span v-if="vibeLoading" class="animate-spin">⏳</span>
                 <span v-else>✨</span>
                 {{ vibeLoading ? '…' : (book.vibeTags?.length ? 'Обновить' : 'Сгенерировать') }}
@@ -165,70 +158,45 @@
             <div v-if="book.vibeTags?.length" class="flex flex-wrap gap-2">
               <span
                 v-for="tag in book.vibeTags" :key="tag"
-                class="rounded-full bg-gradient-to-r from-purple-100 to-blue-100 px-3 py-1 text-xs font-medium text-purple-700"
-              >
-                #{{ tag }}
-              </span>
+                class="rounded-full bg-gradient-to-r from-accent-violet/15 to-accent-pink/15 px-3 py-1 text-xs font-medium text-accent-violet"
+              >#{{ tag }}</span>
             </div>
             <p v-else-if="!vibeLoading" class="text-xs text-gray-400">
               Добавь цитаты во вкладке 💬, затем нажми «Сгенерировать» — ИИ определит атмосферу книги.
             </p>
-
-            <p v-if="vibeError" class="mt-2 text-xs text-red-500">{{ vibeError }}</p>
           </div>
         </div>
 
         <!-- Цитаты -->
-        <div v-else-if="activeTab === 'quotes'" class="p-4 flex flex-col gap-3">
-          <div class="flex flex-col gap-2 rounded-lg border border-dashed border-gray-300 p-3">
-            <textarea
-              v-model="newQuote.text"
-              rows="2"
-              placeholder="Текст цитаты…"
-              class="w-full resize-none rounded border border-gray-200 p-2 text-sm outline-none focus:border-blue-400"
-            />
-            <input
-              v-model="newQuote.chapter"
-              type="text"
-              placeholder="Глава (необязательно)"
-              class="w-full rounded border border-gray-200 p-2 text-sm outline-none focus:border-blue-400"
-            />
-            <button
-              @click="submitQuote"
-              :disabled="!newQuote.text.trim() || quoteAdding"
-              class="self-end rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40"
-            >
+        <div v-else-if="activeTab === 'quotes'" class="flex flex-col gap-3 p-4">
+          <div class="flex flex-col gap-2 rounded-2xl border border-dashed border-white/60 bg-white/30 p-3">
+            <textarea v-model="newQuote.text" rows="2" placeholder="Текст цитаты…" class="field resize-none" />
+            <input v-model="newQuote.chapter" type="text" placeholder="Глава (необязательно)" class="field" />
+            <button @click="submitQuote" :disabled="!newQuote.text.trim() || quoteAdding" class="btn-primary self-end">
               {{ quoteAdding ? '…' : '+ Добавить' }}
             </button>
           </div>
 
-          <p v-if="book.quotes?.length === 0" class="text-sm text-gray-400">Цитат пока нет.</p>
+          <p v-if="book.quotes?.length === 0" class="py-4 text-center text-sm text-gray-400">
+            💬 Цитат пока нет.
+          </p>
           <div
             v-for="q in book.quotes" :key="q.id"
-            class="rounded-lg border border-gray-100 p-3"
+            class="rounded-2xl border border-white/50 bg-white/40 p-3"
           >
             <div v-if="editingQuoteId !== q.id">
               <p class="text-sm text-gray-800">«{{ q.text }}»</p>
               <p v-if="q.chapter" class="mt-1 text-xs text-gray-400">{{ q.chapter }}</p>
               <div class="mt-2 flex gap-3">
-                <button @click="startEditQuote(q)" class="text-xs text-blue-500">Изменить</button>
-                <button @click="removeQuote(q.id)" class="text-xs text-red-400">Удалить</button>
+                <button @click="startEditQuote(q)" class="link-muted">Изменить</button>
+                <button @click="removeQuote(q.id)" class="link-muted">Удалить</button>
               </div>
             </div>
             <div v-else class="flex flex-col gap-2">
-              <textarea
-                v-model="editQuoteDraft.text"
-                rows="2"
-                class="w-full resize-none rounded border border-blue-300 p-2 text-sm outline-none"
-              />
-              <input
-                v-model="editQuoteDraft.chapter"
-                type="text"
-                placeholder="Глава"
-                class="w-full rounded border border-blue-300 p-2 text-sm outline-none"
-              />
+              <textarea v-model="editQuoteDraft.text" rows="2" class="field resize-none" />
+              <input v-model="editQuoteDraft.chapter" type="text" placeholder="Глава" class="field" />
               <div class="flex gap-2">
-                <button @click="saveQuote(q.id)" class="text-sm font-medium text-blue-600">Сохранить</button>
+                <button @click="saveQuote(q.id)" class="text-sm font-semibold text-accent-violet">Сохранить</button>
                 <button @click="editingQuoteId = null" class="text-sm text-gray-400">Отмена</button>
               </div>
             </div>
@@ -236,83 +204,48 @@
         </div>
 
         <!-- Герои -->
-        <div v-else-if="activeTab === 'characters'" class="p-4 flex flex-col gap-3">
-
-          <button
-            @click="generateCharactersAI"
-            :disabled="charsAILoading"
-            class="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-          >
+        <div v-else-if="activeTab === 'characters'" class="flex flex-col gap-3 p-4">
+          <button @click="generateCharactersAI" :disabled="charsAILoading" class="btn-ai">
             <span v-if="charsAILoading" class="animate-spin">⏳</span>
             <span v-else>✨</span>
             {{ charsAILoading ? 'Генерирую…' : 'Сгенерировать персонажей AI' }}
           </button>
 
-          <p v-if="charsAIError" class="text-sm text-red-500">{{ charsAIError }}</p>
-
-          <!-- Ручное добавление + F1 -->
-          <div class="flex flex-col gap-2 rounded-lg border border-dashed border-gray-300 p-3">
-            <input
-              v-model="newChar.name"
-              type="text"
-              placeholder="Имя персонажа"
-              class="w-full rounded border border-gray-200 p-2 text-sm outline-none focus:border-blue-400"
-            />
-            <textarea
-              v-model="newChar.description"
-              rows="2"
-              placeholder="Описание (необязательно)"
-              class="w-full resize-none rounded border border-gray-200 p-2 text-sm outline-none focus:border-blue-400"
-            />
+          <div class="flex flex-col gap-2 rounded-2xl border border-dashed border-white/60 bg-white/30 p-3">
+            <input v-model="newChar.name" type="text" placeholder="Имя персонажа" class="field" />
+            <textarea v-model="newChar.description" rows="2" placeholder="Описание (необязательно)" class="field resize-none" />
             <div class="flex items-center justify-between gap-2">
-              <!-- F1: описать одного героя по имени через AI -->
-              <button
-                @click="generateOneCharacterAI"
-                :disabled="!newChar.name.trim() || oneCharLoading"
-                class="flex items-center gap-1 rounded-lg bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-600 hover:bg-purple-100 disabled:opacity-40"
-              >
+              <button @click="generateOneCharacterAI" :disabled="!newChar.name.trim() || oneCharLoading" class="btn-ai-ghost">
                 <span v-if="oneCharLoading" class="animate-spin">⏳</span>
                 <span v-else>✨</span>
                 {{ oneCharLoading ? '…' : 'Описать через AI' }}
               </button>
-
-              <button
-                @click="submitCharacter"
-                :disabled="!newChar.name.trim() || charAdding"
-                class="rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40"
-              >
+              <button @click="submitCharacter" :disabled="!newChar.name.trim() || charAdding" class="btn-primary">
                 {{ charAdding ? '…' : '+ Добавить' }}
               </button>
             </div>
-            <p v-if="oneCharError" class="text-xs text-red-500">{{ oneCharError }}</p>
           </div>
 
-          <p v-if="book.characters?.length === 0" class="text-sm text-gray-400">Персонажей пока нет.</p>
+          <p v-if="book.characters?.length === 0" class="py-4 text-center text-sm text-gray-400">
+            👥 Персонажей пока нет.
+          </p>
           <div
             v-for="c in book.characters" :key="c.id"
-            class="rounded-lg border border-gray-100 p-3"
+            class="rounded-2xl border border-white/50 bg-white/40 p-3"
           >
             <div v-if="editingCharId !== c.id">
-              <p class="font-medium text-sm text-gray-800">{{ c.name }}</p>
+              <p class="text-sm font-medium text-gray-800">{{ c.name }}</p>
               <p v-if="c.description" class="mt-1 text-xs text-gray-500">{{ c.description }}</p>
               <div class="mt-2 flex gap-3">
-                <button @click="startEditChar(c)" class="text-xs text-blue-500">Изменить</button>
-                <button @click="removeChar(c.id)" class="text-xs text-red-400">Удалить</button>
+                <button @click="startEditChar(c)" class="link-muted">Изменить</button>
+                <button @click="removeChar(c.id)" class="link-muted">Удалить</button>
               </div>
             </div>
             <div v-else class="flex flex-col gap-2">
-              <input
-                v-model="editCharDraft.name"
-                type="text"
-                class="w-full rounded border border-blue-300 p-2 text-sm outline-none"
-              />
-              <textarea
-                v-model="editCharDraft.description"
-                rows="2"
-                class="w-full resize-none rounded border border-blue-300 p-2 text-sm outline-none"
-              />
+              <input v-model="editCharDraft.name" type="text" class="field" />
+              <textarea v-model="editCharDraft.description" rows="2" class="field resize-none" />
               <div class="flex gap-2">
-                <button @click="saveChar(c.id)" class="text-sm font-medium text-blue-600">Сохранить</button>
+                <button @click="saveChar(c.id)" class="text-sm font-semibold text-accent-violet">Сохранить</button>
                 <button @click="editingCharId = null" class="text-sm text-gray-400">Отмена</button>
               </div>
             </div>
@@ -320,35 +253,27 @@
         </div>
 
         <!-- Саммари -->
-        <div v-else-if="activeTab === 'summary'" class="p-4 flex flex-col gap-3">
-          <button
-            @click="generateSummaryAI"
-            :disabled="summaryLoading"
-            class="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-          >
+        <div v-else-if="activeTab === 'summary'" class="flex flex-col gap-3 p-4">
+          <button @click="generateSummaryAI" :disabled="summaryLoading" class="btn-ai">
             <span v-if="summaryLoading" class="animate-spin">⏳</span>
             <span v-else>✨</span>
             {{ summaryLoading ? 'Генерирую…' : (book.summary ? 'Перегенерировать' : 'Сгенерировать саммари') }}
           </button>
 
-          <p v-if="summaryError" class="text-sm text-red-500">{{ summaryError }}</p>
-
-          <div v-if="book.summary" class="rounded-xl bg-gray-50 p-4">
-            <p class="text-sm leading-relaxed text-gray-800 whitespace-pre-line">{{ book.summary }}</p>
+          <div v-if="book.summary" class="rounded-2xl border border-white/50 bg-white/40 p-4">
+            <p class="whitespace-pre-line text-sm leading-relaxed text-gray-800">{{ book.summary }}</p>
           </div>
-
-          <p v-else-if="!summaryLoading" class="text-center text-sm text-gray-400 py-4">
+          <p v-else-if="!summaryLoading" class="py-4 text-center text-sm text-gray-400">
             Нажми кнопку — ИИ напишет краткое описание книги 🤖
           </p>
         </div>
-
       </div>
 
       <button
         @click="confirmDelete"
-        class="w-full rounded-2xl border border-red-200 py-3 text-sm text-red-500 hover:bg-red-50"
+        class="btn-delete-soft"
       >
-        🗑 Удалить книгу
+        Удалить книгу
       </button>
 
     </div>
@@ -372,6 +297,7 @@ import {
 } from '../api/books'
 import type { Book, Quote, Character, Status } from '../types/models'
 import InlineField from '../components/InlineField.vue'
+import { toastError } from '../lib/toast'
 
 const props = defineProps<{ id: string }>()
 const router = useRouter()
@@ -404,7 +330,7 @@ async function patch(data: Partial<Book>) {
     book.value.characters ??= []
     book.value.vibeTags ??= []
   } catch (e) {
-    alert(e instanceof Error ? e.message : 'Ошибка сохранения')
+    toastError(e instanceof Error ? e.message : 'Ошибка сохранения')
   }
 }
 
@@ -423,7 +349,7 @@ async function onCoverChange(e: Event) {
     book.value.characters ??= []
     book.value.vibeTags ??= []
   } catch (err) {
-    coverError.value = err instanceof Error ? err.message : 'Ошибка загрузки'
+    toastError(err instanceof Error ? err.message : 'Ошибка загрузки')
   } finally {
     coverUploading.value = false
     ;(e.target as HTMLInputElement).value = ''
@@ -442,7 +368,7 @@ async function onGenerateCover() {
     book.value.characters ??= []
     book.value.vibeTags ??= []
   } catch (e) {
-    coverError.value = e instanceof Error ? e.message : 'Ошибка генерации обложки'
+    toastError(e instanceof Error ? e.message : 'Ошибка генерации обложки')
   } finally {
     coverGenerating.value = false
   }
@@ -455,7 +381,7 @@ async function confirmDelete() {
     await deleteBook(book.value.id)
     router.replace('/shelf')
   } catch (e) {
-    alert(e instanceof Error ? e.message : 'Ошибка удаления')
+    toastError(e instanceof Error ? e.message : 'Ошибка удаления')
   }
 }
 
@@ -466,10 +392,10 @@ const statuses: { value: Status; label: string }[] = [
 ]
 
 const tabs = [
-  { id: 'notes', label: '📝 Заметки' },
-  { id: 'quotes', label: '💬 Цитаты' },
-  { id: 'characters', label: '👥 Герои' },
-  { id: 'summary', label: '🤖 Саммари' },
+  { id: 'notes', label: 'Заметки' },
+  { id: 'quotes', label: 'Цитаты' },
+  { id: 'characters', label: 'Герои' },
+  { id: 'summary', label: 'Саммари' },
 ]
 const activeTab = ref('notes')
 
@@ -504,7 +430,7 @@ async function submitQuote() {
     book.value.quotes!.push(q)
     newQuote.value = { text: '', chapter: '' }
   } catch (e) {
-    alert(e instanceof Error ? e.message : 'Ошибка')
+    toastError(e instanceof Error ? e.message : 'Ошибка')
   } finally {
     quoteAdding.value = false
   }
@@ -525,7 +451,7 @@ async function saveQuote(id: number) {
     if (idx !== -1) book.value!.quotes![idx] = updated
     editingQuoteId.value = null
   } catch (e) {
-    alert(e instanceof Error ? e.message : 'Ошибка')
+    toastError(e instanceof Error ? e.message : 'Ошибка')
   }
 }
 
@@ -535,7 +461,7 @@ async function removeQuote(id: number) {
     await deleteQuote(id)
     book.value!.quotes = book.value!.quotes!.filter(q => q.id !== id)
   } catch (e) {
-    alert(e instanceof Error ? e.message : 'Ошибка')
+    toastError(e instanceof Error ? e.message : 'Ошибка')
   }
 }
 
@@ -556,7 +482,7 @@ async function submitCharacter() {
     book.value.characters!.push(c)
     newChar.value = { name: '', description: '' }
   } catch (e) {
-    alert(e instanceof Error ? e.message : 'Ошибка')
+    toastError(e instanceof Error ? e.message : 'Ошибка')
   } finally {
     charAdding.value = false
   }
@@ -577,7 +503,7 @@ async function saveChar(id: number) {
     if (idx !== -1) book.value!.characters![idx] = updated
     editingCharId.value = null
   } catch (e) {
-    alert(e instanceof Error ? e.message : 'Ошибка')
+    toastError(e instanceof Error ? e.message : 'Ошибка')
   }
 }
 
@@ -587,7 +513,7 @@ async function removeChar(id: number) {
     await deleteCharacter(id)
     book.value!.characters = book.value!.characters!.filter(c => c.id !== id)
   } catch (e) {
-    alert(e instanceof Error ? e.message : 'Ошибка')
+    toastError(e instanceof Error ? e.message : 'Ошибка')
   }
 }
 
@@ -604,6 +530,7 @@ async function generateSummaryAI() {
     book.value.summary = summary
   } catch (e) {
     summaryError.value = e instanceof Error ? e.message : 'Ошибка генерации'
+    toastError(summaryError.value)
   } finally {
     summaryLoading.value = false
   }
@@ -622,6 +549,7 @@ async function generateCharactersAI() {
     book.value.characters = characters
   } catch (e) {
     charsAIError.value = e instanceof Error ? e.message : 'Ошибка генерации'
+    toastError(charsAIError.value)
   } finally {
     charsAILoading.value = false
   }
@@ -641,6 +569,7 @@ async function generateOneCharacterAI() {
     newChar.value = { name: '', description: '' }
   } catch (e) {
     oneCharError.value = e instanceof Error ? e.message : 'Ошибка генерации'
+    toastError(oneCharError.value)
   } finally {
     oneCharLoading.value = false
   }
@@ -659,6 +588,7 @@ async function generateVibeAI() {
     book.value.vibeTags = vibeTags
   } catch (e) {
     vibeError.value = e instanceof Error ? e.message : 'Ошибка генерации'
+    toastError(vibeError.value)
   } finally {
     vibeLoading.value = false
   }
@@ -678,6 +608,7 @@ async function generateGenreYearAI() {
     book.value.year = year
   } catch (e) {
     genreYearError.value = e instanceof Error ? e.message : 'Ошибка генерации'
+    toastError(genreYearError.value)
   } finally {
     genreYearLoading.value = false
   }

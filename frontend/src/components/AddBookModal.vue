@@ -1,23 +1,22 @@
-<!-- src/components/AddBookModal.vue -->
 <template>
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4 backdrop-blur-sm"
     @click.self="$emit('close')"
   >
-    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-      <h2 class="mb-4 text-lg font-semibold">Добавить книгу</h2>
+    <div class="glass-card animate-pop-in w-full max-w-md p-6">
+      <h2 class="mb-5 text-xl font-bold">Добавить книгу</h2>
 
-      <form @submit.prevent="submit" class="flex flex-col gap-3">
+      <form @submit.prevent="submit" class="flex flex-col gap-4">
         <!-- Название -->
         <div>
           <label class="mb-1 block text-sm font-medium text-gray-700">
-            Название <span class="text-red-500">*</span>
+            Название <span class="text-accent-pink">*</span>
           </label>
           <input
             v-model="form.title"
             type="text"
             placeholder="Мастер и Маргарита"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+            class="field"
           />
           <p v-if="fieldError('title')" class="mt-1 text-xs text-red-500">
             {{ fieldError('title') }}
@@ -27,13 +26,13 @@
         <!-- Автор -->
         <div>
           <label class="mb-1 block text-sm font-medium text-gray-700">
-            Автор <span class="text-red-500">*</span>
+            Автор <span class="text-accent-pink">*</span>
           </label>
           <input
             v-model="form.author"
             type="text"
             placeholder="Михаил Булгаков"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+            class="field"
           />
           <p v-if="fieldError('author')" class="mt-1 text-xs text-red-500">
             {{ fieldError('author') }}
@@ -43,12 +42,7 @@
         <!-- Жанр -->
         <div>
           <label class="mb-1 block text-sm font-medium text-gray-700">Жанр</label>
-          <input
-            v-model="form.genre"
-            type="text"
-            placeholder="Роман"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-          />
+          <input v-model="form.genre" type="text" placeholder="Роман" class="field" />
         </div>
 
         <!-- Год -->
@@ -60,17 +54,14 @@
             placeholder="1967"
             min="1000"
             max="2099"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+            class="field"
           />
         </div>
 
         <!-- Статус -->
         <div>
           <label class="mb-1 block text-sm font-medium text-gray-700">Статус</label>
-          <select
-            v-model="form.status"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-          >
+          <select v-model="form.status" class="field">
             <option value="WANT">Хочу прочитать</option>
             <option value="READING">Читаю</option>
             <option value="READ">Прочитано</option>
@@ -78,22 +69,14 @@
         </div>
 
         <!-- Общая ошибка -->
-        <p v-if="generalError" class="text-sm text-red-600">{{ generalError }}</p>
+        <p v-if="generalError" class="text-sm text-red-500">{{ generalError }}</p>
 
         <!-- Кнопки -->
-        <div class="mt-2 flex gap-3">
-          <button
-            type="button"
-            class="flex-1 rounded-lg border border-gray-300 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            @click="$emit('close')"
-          >
+        <div class="mt-1 flex gap-3">
+          <button type="button" class="btn-glass flex-1" @click="$emit('close')">
             Отмена
           </button>
-          <button
-            type="submit"
-            :disabled="loading"
-            class="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
+          <button type="submit" :disabled="loading" class="btn-primary flex-1">
             {{ loading ? 'Сохраняю…' : 'Добавить' }}
           </button>
         </div>

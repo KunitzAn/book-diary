@@ -115,7 +115,8 @@ export default async function booksRoutes(app: FastifyInstance) {
     if (status) where.status = status
     if (genre) where.genre = genre
 
-    let orderBy: any = { createdAt: 'desc' }
+    // По умолчанию — пользовательский порядок (drag&drop)
+    let orderBy: any = [{ position: 'asc' }, { createdAt: 'desc' }]
     if (sort === 'rating') orderBy = { rating: 'desc' }
     if (sort === 'author') orderBy = { author: 'asc' }
     if (sort === 'date') orderBy = { createdAt: 'desc' }
@@ -169,6 +170,14 @@ export default async function booksRoutes(app: FastifyInstance) {
       const userId = request.user!.userId
       const body = request.body as any
 
+      // position = max + 1, чтобы новая книга была в конце полки
+      const last = await prisma.book.findFirst({
+        where: { userId },
+        orderBy: { position: 'desc' },
+        select: { position: true },
+      })
+      const nextPosition = (last?.position ?? -1) + 1
+
       const book = await prisma.book.create({
         data: {
           userId,
@@ -181,6 +190,7 @@ export default async function booksRoutes(app: FastifyInstance) {
           coverUrl: body.coverUrl,
           notes: body.notes,
           summary: body.summary,
+          position: nextPosition,
         },
       })
 
@@ -206,6 +216,7 @@ export default async function booksRoutes(app: FastifyInstance) {
             coverUrl: { type: 'string' },
             notes: { type: 'string' },
             summary: { type: 'string' },
+            position: { type: 'integer', minimum: 0 },
           },
           additionalProperties: false,
         },
@@ -222,6 +233,7 @@ export default async function booksRoutes(app: FastifyInstance) {
       const allowed = [
         'title', 'author', 'genre', 'year',
         'status', 'rating', 'coverUrl', 'notes', 'summary',
+        'position',
       ]
       const data: Record<string, any> = {}
       for (const key of allowed) if (key in body) data[key] = body[key]
