@@ -50,6 +50,101 @@ export default async function aiRoutes(app: FastifyInstance) {
     return reply.send({ characters: saved })
   })
 
+  // ─── F1: POST /books/:id/generate-character — описание ОДНОГО героя по имени ───
+  app.post('/books/:id/generate-character', async (
+    req: FastifyRequest<{ Params: { id: string }; Body: { name: string } }>,
+    reply: FastifyReply
+  ) => {
+    const bookId = parseInt(req.params.id)
+    const userId = req.user!.userId
+    const name = req.body?.name?.trim()
+
+    if (!name) return reply.status(400).send({ error: 'Нужно имя персонажа' })
+
+    const book = await prisma.book.findFirst({ where: { id: bookId, userId } })
+    if (!book) return reply.status(404).send({ error: 'Книга не найдена' })
+
+    const prompt = `В книге "${book.title}" автора ${book.author} есть персонаж по имени "${name}".
+Напиши краткое описание этого персонажа в 1-2 предложениях.
+Только текст описания, без вступлений, без кавычек, без markdown.`
+
+    const description = await generateText(prompt)
+
+    const character = await prisma.character.create({
+      data: { bookId, name, description: description.trim() }
+    })
+
+    return reply.send({ character })
+  })
+
+  // ─── F2: POST /books/:id/generate-vibe — хештеги вайба по цитатам ───
+  app.post('/books/:id/generate-vibe', async (
+    req: FastifyRequest<{ Params: { id: string } }>,
+    reply: FastifyReply
+  ) => {
+    const bookId = parseInt(req.params.id)
+    const userId = req.user!.userId
+
+    const book = await prisma.book.findFirst({
+      where: { id: bookId, userId },
+      include: { quotes: true }
+    })
+    if (!book) return reply.status(404).send({ error: 'Книга не найдена' })
+
+    if (!book.quotes.length) {
+      return reply.status(400).send({ error: 'Сначала добавь хотя бы одну цитату' })
+    }
+
+    const quotesText = book.quotes.map(q => `«${q.text}»`).join('\n')
+
+    const prompt = `Вот цитаты из книги "${book.title}" автора ${book.author}:
+${quotesText}
+
+На основе этих цитат определи атмосферу, настроение и стиль книги.
+Верни ТОЛЬКО JSON массив из 5-8 коротких хештегов на русском (одно-два слова, без символа #).
+Пример: ["меланхолия", "одиночество", "поиск смысла"].
+Без markdown, без пояснений.`
+
+    const tags = await generateJSON<string[]>(prompt)
+    const vibeTags = tags.map(t => t.replace(/^#/, '').trim()).filter(Boolean)
+
+    const updated = await prisma.book.update({
+      where: { id: bookId },
+      data: { vibeTags }
+    })
+
+    return reply.send({ vibeTags: updated.vibeTags })
+  })
+
+  // ─── F4: POST /books/:id/generate-genre-year — жанр и год по названию+автору ───
+  app.post('/books/:id/generate-genre-year', async (
+    req: FastifyRequest<{ Params: { id: string } }>,
+    reply: FastifyReply
+  ) => {
+    const bookId = parseInt(req.params.id)
+    const userId = req.user!.userId
+
+    const book = await prisma.book.findFirst({ where: { id: bookId, userId } })
+    if (!book) return reply.status(404).send({ error: 'Книга не найдена' })
+
+    const prompt = `Книга "${book.title}" автора ${book.author}.
+Определи её жанр и год первой публикации.
+Верни ТОЛЬКО JSON объект с полями: genre (строка, на русском) и year (число — год издания).
+Если год неизвестен, поставь null. Без markdown, без пояснений.`
+
+    const result = await generateJSON<{ genre: string | null; year: number | null }>(prompt)
+
+    const updated = await prisma.book.update({
+      where: { id: bookId },
+      data: {
+        genre: result.genre || book.genre,
+        year: result.year ?? book.year,
+      }
+    })
+
+    return reply.send({ genre: updated.genre, year: updated.year })
+  })
+
   // POST /ai/similar — похожие на выбранные книги
   app.post('/ai/similar', async (
     req: FastifyRequest<{ Body: { bookIds: number[] } }>,
@@ -66,7 +161,6 @@ export default async function aiRoutes(app: FastifyInstance) {
 
     if (!books.length) return reply.status(404).send({ error: 'Книги не найдены' })
 
-    // Все книги пользователя чтобы не рекомендовать уже прочитанные
     const allUserBooks = await prisma.book.findMany({
       where: { userId },
       select: { title: true, author: true }
@@ -127,7 +221,7 @@ export default async function aiRoutes(app: FastifyInstance) {
     }
 
     const readBooks = books.filter(b => b.status === 'READ')
-    const wantBooks = books.filter(b => b.status === 'WANT_TO_READ')
+    const wantBooks = books.filter(b => b.status === 'WANT') // ← исправлен баг WANT_TO_READ → WANT
 
     const readList = readBooks
       .map(b => `"${b.title}" (${b.author})${b.rating ? `, оценка ${b.rating}/10` : ''}`)

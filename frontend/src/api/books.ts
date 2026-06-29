@@ -127,3 +127,27 @@ export function generateCover(bookId: number): Promise<Book> {
     method: 'POST',
   })
 }
+
+// ---------- AI: новые ----------
+
+// F1 — описание одного героя по имени
+export function generateCharacter(bookId: number, name: string): Promise<{ character: Character }> {
+  return apiFetch<{ character: Character }>(`/books/${bookId}/generate-character`, {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  })
+}
+
+// F2 — хештеги-вайб по цитатам
+export function generateVibe(bookId: number): Promise<{ vibeTags: string[] }> {
+  return apiFetch<{ vibeTags: string[] }>(`/books/${bookId}/generate-vibe`, {
+    method: 'POST',
+  })
+}
+
+// F4 — жанр и год по названию+автору
+export function generateGenreYear(bookId: number): Promise<{ genre: string | null; year: number | null }> {
+  return apiFetch<{ genre: string | null; year: number | null }>(`/books/${bookId}/generate-genre-year`, {
+    method: 'POST',
+  })
+}

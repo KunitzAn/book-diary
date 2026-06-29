@@ -34,6 +34,7 @@ model Book {
   coverUrl   String?
   notes      String?
   summary    String?
+  vibeTags   String[]   @default([])
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
   quotes     Quote[]

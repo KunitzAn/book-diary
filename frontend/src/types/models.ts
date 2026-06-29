@@ -9,7 +9,8 @@ export interface Book {
   status: Status
   rating?: number | null
   notes?: string | null
-  summary?: string | null   // ← добавь если нет
+  summary?: string | null
+  vibeTags?: string[]      // ← добавили
   coverUrl?: string | null
   quotes?: Quote[]
   characters?: Character[]
