@@ -23,7 +23,6 @@
         />
         <span v-else class="text-5xl">📖</span>
 
-        <!-- Лоадер поверх обложки во время генерации -->
         <div
           v-if="coverGenerating"
           class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 rounded-xl gap-2"
@@ -33,7 +32,6 @@
         </div>
       </div>
 
-      <!-- Одна главная кнопка -->
       <button
         @click="onGenerateCover"
         :disabled="coverGenerating || coverUploading"
@@ -44,7 +42,6 @@
         {{ coverGenerating ? 'Ищу обложку…' : 'Найти обложку' }}
       </button>
 
-      <!-- Загрузка вручную — маленькая ссылка под кнопкой -->
       <label class="cursor-pointer text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2">
         {{ coverUploading ? 'Загружаю…' : 'или загрузить свою' }}
         <input
@@ -70,6 +67,18 @@
         <InlineField label="Год" :value="book.year ? String(book.year) : ''"
           placeholder="не указан" type="number"
           @save="v => patch({ year: v ? Number(v) : null })" />
+
+        <!-- F4: AI жанр и год -->
+        <button
+          @click="generateGenreYearAI"
+          :disabled="genreYearLoading"
+          class="self-start flex items-center gap-1.5 rounded-lg bg-purple-50 px-3 py-1.5 text-xs font-medium text-purple-600 hover:bg-purple-100 disabled:opacity-50"
+        >
+          <span v-if="genreYearLoading" class="animate-spin">⏳</span>
+          <span v-else>✨</span>
+          {{ genreYearLoading ? 'Определяю…' : 'Определить жанр и год (AI)' }}
+        </button>
+        <p v-if="genreYearError" class="text-xs text-red-500">{{ genreYearError }}</p>
       </div>
 
       <!-- Статус -->
@@ -108,7 +117,6 @@
       <!-- Вкладки -->
       <div class="rounded-2xl bg-white shadow-sm overflow-hidden">
 
-        <!-- Таб-бар -->
         <div class="flex border-b border-gray-100">
           <button
             v-for="tab in tabs" :key="tab.id"
@@ -138,6 +146,36 @@
             {{ notesSaving ? 'Сохраняю…' : 'Сохранить' }}
           </button>
           <span v-if="notesSaved" class="ml-3 text-sm text-green-600">✓ Сохранено</span>
+
+          <!-- F2: Вайб книги -->
+          <div class="mt-6 border-t border-gray-100 pt-4">
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Вайб книги</p>
+              <button
+                @click="generateVibeAI"
+                :disabled="vibeLoading"
+                class="flex items-center gap-1 rounded-lg bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-600 hover:bg-purple-100 disabled:opacity-50"
+              >
+                <span v-if="vibeLoading" class="animate-spin">⏳</span>
+                <span v-else>✨</span>
+                {{ vibeLoading ? '…' : (book.vibeTags?.length ? 'Обновить' : 'Сгенерировать') }}
+              </button>
+            </div>
+
+            <div v-if="book.vibeTags?.length" class="flex flex-wrap gap-2">
+              <span
+                v-for="tag in book.vibeTags" :key="tag"
+                class="rounded-full bg-gradient-to-r from-purple-100 to-blue-100 px-3 py-1 text-xs font-medium text-purple-700"
+              >
+                #{{ tag }}
+              </span>
+            </div>
+            <p v-else-if="!vibeLoading" class="text-xs text-gray-400">
+              Добавь цитаты во вкладке 💬, затем нажми «Сгенерировать» — ИИ определит атмосферу книги.
+            </p>
+
+            <p v-if="vibeError" class="mt-2 text-xs text-red-500">{{ vibeError }}</p>
+          </div>
         </div>
 
         <!-- Цитаты -->
@@ -200,7 +238,6 @@
         <!-- Герои -->
         <div v-else-if="activeTab === 'characters'" class="p-4 flex flex-col gap-3">
 
-          <!-- AI кнопка -->
           <button
             @click="generateCharactersAI"
             :disabled="charsAILoading"
@@ -213,7 +250,7 @@
 
           <p v-if="charsAIError" class="text-sm text-red-500">{{ charsAIError }}</p>
 
-          <!-- Ручное добавление -->
+          <!-- Ручное добавление + F1 -->
           <div class="flex flex-col gap-2 rounded-lg border border-dashed border-gray-300 p-3">
             <input
               v-model="newChar.name"
@@ -227,13 +264,27 @@
               placeholder="Описание (необязательно)"
               class="w-full resize-none rounded border border-gray-200 p-2 text-sm outline-none focus:border-blue-400"
             />
-            <button
-              @click="submitCharacter"
-              :disabled="!newChar.name.trim() || charAdding"
-              class="self-end rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40"
-            >
-              {{ charAdding ? '…' : '+ Добавить' }}
-            </button>
+            <div class="flex items-center justify-between gap-2">
+              <!-- F1: описать одного героя по имени через AI -->
+              <button
+                @click="generateOneCharacterAI"
+                :disabled="!newChar.name.trim() || oneCharLoading"
+                class="flex items-center gap-1 rounded-lg bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-600 hover:bg-purple-100 disabled:opacity-40"
+              >
+                <span v-if="oneCharLoading" class="animate-spin">⏳</span>
+                <span v-else>✨</span>
+                {{ oneCharLoading ? '…' : 'Описать через AI' }}
+              </button>
+
+              <button
+                @click="submitCharacter"
+                :disabled="!newChar.name.trim() || charAdding"
+                class="rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40"
+              >
+                {{ charAdding ? '…' : '+ Добавить' }}
+              </button>
+            </div>
+            <p v-if="oneCharError" class="text-xs text-red-500">{{ oneCharError }}</p>
           </div>
 
           <p v-if="book.characters?.length === 0" class="text-sm text-gray-400">Персонажей пока нет.</p>
@@ -270,8 +321,6 @@
 
         <!-- Саммари -->
         <div v-else-if="activeTab === 'summary'" class="p-4 flex flex-col gap-3">
-
-          <!-- Кнопка генерации -->
           <button
             @click="generateSummaryAI"
             :disabled="summaryLoading"
@@ -284,7 +333,6 @@
 
           <p v-if="summaryError" class="text-sm text-red-500">{{ summaryError }}</p>
 
-          <!-- Текст саммари -->
           <div v-if="book.summary" class="rounded-xl bg-gray-50 p-4">
             <p class="text-sm leading-relaxed text-gray-800 whitespace-pre-line">{{ book.summary }}</p>
           </div>
@@ -292,12 +340,10 @@
           <p v-else-if="!summaryLoading" class="text-center text-sm text-gray-400 py-4">
             Нажми кнопку — ИИ напишет краткое описание книги 🤖
           </p>
-
         </div>
 
       </div>
 
-      <!-- Удалить -->
       <button
         @click="confirmDelete"
         class="w-full rounded-2xl border border-red-200 py-3 text-sm text-red-500 hover:bg-red-50"
@@ -320,17 +366,18 @@ import {
   generateSummary,
   generateCharacters,
   generateCover,
+  generateCharacter,    // F1
+  generateVibe,         // F2
+  generateGenreYear,    // F4
 } from '../api/books'
 import type { Book, Quote, Character, Status } from '../types/models'
 import InlineField from '../components/InlineField.vue'
 
-// ─── роутер ───────────────────────────────────────────────
 const props = defineProps<{ id: string }>()
 const router = useRouter()
 
 const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
-// ─── данные ───────────────────────────────────────────────
 const book = ref<Book | null>(null)
 const loading = ref(true)
 const error = ref('')
@@ -341,6 +388,7 @@ onMounted(async () => {
     notesValue.value = book.value.notes ?? ''
     book.value.quotes ??= []
     book.value.characters ??= []
+    book.value.vibeTags ??= []
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Не удалось загрузить книгу'
   } finally {
@@ -348,13 +396,13 @@ onMounted(async () => {
   }
 })
 
-// ─── patch ────────────────────────────────────────────────
 async function patch(data: Partial<Book>) {
   if (!book.value) return
   try {
     book.value = await updateBook(book.value.id, data)
     book.value.quotes ??= []
     book.value.characters ??= []
+    book.value.vibeTags ??= []
   } catch (e) {
     alert(e instanceof Error ? e.message : 'Ошибка сохранения')
   }
@@ -373,6 +421,7 @@ async function onCoverChange(e: Event) {
     book.value = await uploadCover(book.value.id, file)
     book.value.quotes ??= []
     book.value.characters ??= []
+    book.value.vibeTags ??= []
   } catch (err) {
     coverError.value = err instanceof Error ? err.message : 'Ошибка загрузки'
   } finally {
@@ -381,7 +430,6 @@ async function onCoverChange(e: Event) {
   }
 }
 
-// ─── AI: обложка ──────────────────────────────────────────
 const coverGenerating = ref(false)
 
 async function onGenerateCover() {
@@ -392,6 +440,7 @@ async function onGenerateCover() {
     book.value = await generateCover(book.value.id)
     book.value.quotes ??= []
     book.value.characters ??= []
+    book.value.vibeTags ??= []
   } catch (e) {
     coverError.value = e instanceof Error ? e.message : 'Ошибка генерации обложки'
   } finally {
@@ -399,7 +448,6 @@ async function onGenerateCover() {
   }
 }
 
-// ─── удаление книги ───────────────────────────────────────
 async function confirmDelete() {
   if (!book.value) return
   if (!confirm(`Удалить «${book.value.title}»?`)) return
@@ -411,14 +459,12 @@ async function confirmDelete() {
   }
 }
 
-// ─── статус / рейтинг ─────────────────────────────────────
 const statuses: { value: Status; label: string }[] = [
   { value: 'WANT', label: 'Хочу' },
   { value: 'READING', label: 'Читаю' },
   { value: 'READ', label: 'Прочитано' },
 ]
 
-// ─── вкладки ──────────────────────────────────────────────
 const tabs = [
   { id: 'notes', label: '📝 Заметки' },
   { id: 'quotes', label: '💬 Цитаты' },
@@ -563,7 +609,7 @@ async function generateSummaryAI() {
   }
 }
 
-// ─── AI: персонажи ────────────────────────────────────────
+// ─── AI: все персонажи ────────────────────────────────────
 const charsAILoading = ref(false)
 const charsAIError = ref('')
 
@@ -578,6 +624,62 @@ async function generateCharactersAI() {
     charsAIError.value = e instanceof Error ? e.message : 'Ошибка генерации'
   } finally {
     charsAILoading.value = false
+  }
+}
+
+// ─── F1: AI описание ОДНОГО героя по имени ────────────────
+const oneCharLoading = ref(false)
+const oneCharError = ref('')
+
+async function generateOneCharacterAI() {
+  if (!book.value || !newChar.value.name.trim()) return
+  oneCharLoading.value = true
+  oneCharError.value = ''
+  try {
+    const { character } = await generateCharacter(book.value.id, newChar.value.name.trim())
+    book.value.characters!.push(character)
+    newChar.value = { name: '', description: '' }
+  } catch (e) {
+    oneCharError.value = e instanceof Error ? e.message : 'Ошибка генерации'
+  } finally {
+    oneCharLoading.value = false
+  }
+}
+
+// ─── F2: AI вайб книги по цитатам ─────────────────────────
+const vibeLoading = ref(false)
+const vibeError = ref('')
+
+async function generateVibeAI() {
+  if (!book.value) return
+  vibeLoading.value = true
+  vibeError.value = ''
+  try {
+    const { vibeTags } = await generateVibe(book.value.id)
+    book.value.vibeTags = vibeTags
+  } catch (e) {
+    vibeError.value = e instanceof Error ? e.message : 'Ошибка генерации'
+  } finally {
+    vibeLoading.value = false
+  }
+}
+
+// ─── F4: AI жанр и год ────────────────────────────────────
+const genreYearLoading = ref(false)
+const genreYearError = ref('')
+
+async function generateGenreYearAI() {
+  if (!book.value) return
+  genreYearLoading.value = true
+  genreYearError.value = ''
+  try {
+    const { genre, year } = await generateGenreYear(book.value.id)
+    book.value.genre = genre
+    book.value.year = year
+  } catch (e) {
+    genreYearError.value = e instanceof Error ? e.message : 'Ошибка генерации'
+  } finally {
+    genreYearLoading.value = false
   }
 }
 </script>
