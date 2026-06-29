@@ -6,7 +6,6 @@
     >
       <div class="glass mx-auto flex max-w-3xl items-center justify-between rounded-full px-5 py-2.5">
         <RouterLink to="/shelf" class="flex items-center gap-2 text-base font-semibold">
-          <span class="text-xl">📚</span>
           <span class="bg-gradient-to-r from-accent-violet to-accent-blue bg-clip-text text-transparent">
             Моя полка
           </span>
