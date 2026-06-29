@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '../lib/prisma.js'
 import { authMiddleware } from '../middleware/auth.js'
+//import { generateText, generateJSON } from '../lib/gemini.js'
 import { generateText, generateJSON } from '../lib/gemini.js'
 
 export default async function aiRoutes(app: FastifyInstance) {
