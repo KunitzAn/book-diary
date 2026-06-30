@@ -3,9 +3,14 @@
     <!-- Хедер полки -->
     <div class="mb-5 flex items-center justify-between">
       <h1 class="text-2xl font-bold tracking-tight">Моя полка</h1>
-      <button @click="showAdd = true" class="btn-soft">
-        Добавить
-      </button>
+      <div class="flex items-center gap-2">
+        <router-link to="/community" class="chip">
+          Сообщество
+        </router-link>
+        <button @click="showAdd = true" class="btn-soft">
+          Добавить
+        </button>
+      </div>
     </div>
 
     <!-- Фильтры -->

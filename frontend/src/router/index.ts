@@ -3,6 +3,9 @@ import { getToken } from '../lib/api'
 import Login from '../pages/Login.vue'
 import Shelf from '../pages/Shelf.vue'
 import BookDetail from '../pages/BookDetail.vue'
+import Community from '../pages/Community.vue'
+import PublicShelf from '../pages/PublicShelf.vue'
+import PublicBook from '../pages/PublicBook.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -20,6 +23,21 @@ const router = createRouter({
       path: '/book/:id',
       component: BookDetail,
       meta: { requiresAuth: true },
+      props: true,
+    },
+    // ── G: Сообщество (публичные, без авторизации) ──
+    {
+      path: '/community',
+      component: Community,
+    },
+    {
+      path: '/community/user/:userId',
+      component: PublicShelf,
+      props: true,
+    },
+    {
+      path: '/community/book/:id',
+      component: PublicBook,
       props: true,
     },
     {

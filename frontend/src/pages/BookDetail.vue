@@ -117,6 +117,36 @@
         </p>
       </div>
 
+      <!-- Публичность -->
+      <div class="glass-card p-4">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <p class="text-sm font-medium text-gray-800">Открыть в сообществе</p>
+            <p class="mt-0.5 text-xs text-gray-400">
+              {{ book.isPublic
+                ? 'Книгу видят все: заметки, цитаты, герои, оценка'
+                : 'Книга видна только тебе' }}
+            </p>
+          </div>
+
+          <button
+            @click="togglePublic"
+            :disabled="publicSaving"
+            class="relative h-7 w-12 shrink-0 rounded-full transition"
+            :class="book.isPublic
+              ? 'bg-gradient-to-r from-accent-violet to-accent-blue'
+              : 'bg-gray-300'"
+            role="switch"
+            :aria-checked="book.isPublic ? 'true' : 'false'"
+          >
+            <span
+              class="absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all"
+              :class="book.isPublic ? 'left-6' : 'left-1'"
+            />
+          </button>
+        </div>
+      </div>
+
       <!-- Вкладки -->
       <div class="glass-card overflow-hidden">
         <!-- Скролл по горизонтали на мобиле -->
@@ -611,6 +641,19 @@ async function generateGenreYearAI() {
     toastError(genreYearError.value)
   } finally {
     genreYearLoading.value = false
+  }
+}
+
+// ─── G: публичность книги ─────────────────────────────────
+const publicSaving = ref(false)
+
+async function togglePublic() {
+  if (!book.value) return
+  publicSaving.value = true
+  try {
+    await patch({ isPublic: !book.value.isPublic })
+  } finally {
+    publicSaving.value = false
   }
 }
 </script>

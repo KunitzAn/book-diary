@@ -217,6 +217,7 @@ export default async function booksRoutes(app: FastifyInstance) {
             notes: { type: 'string' },
             summary: { type: 'string' },
             position: { type: 'integer', minimum: 0 },
+            isPublic: { type: 'boolean' },   // ← НОВОЕ
           },
           additionalProperties: false,
         },
@@ -233,7 +234,7 @@ export default async function booksRoutes(app: FastifyInstance) {
       const allowed = [
         'title', 'author', 'genre', 'year',
         'status', 'rating', 'coverUrl', 'notes', 'summary',
-        'position',
+        'position', 'isPublic',   // ← добавили isPublic
       ]
       const data: Record<string, any> = {}
       for (const key of allowed) if (key in body) data[key] = body[key]

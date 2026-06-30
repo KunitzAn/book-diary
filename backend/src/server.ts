@@ -8,7 +8,8 @@ import { authRoutes } from './routes/auth.js'
 import booksRoutes from './routes/books.js'
 import quotesRoutes from './routes/quotes.js'
 import charactersRoutes from './routes/characters.js'
-import aiRoutes from './routes/ai.js'      
+import aiRoutes from './routes/ai.js'
+import publicRoutes from './routes/public.js'    
     
 
 const app = Fastify({ logger: true })
@@ -39,7 +40,8 @@ app.register(authRoutes)
 app.register(booksRoutes)
 app.register(quotesRoutes)
 app.register(charactersRoutes)
-app.register(aiRoutes)                         
+app.register(aiRoutes)
+app.register(publicRoutes)                        
 
 app.get('/health', async () => ({ ok: true }))
 

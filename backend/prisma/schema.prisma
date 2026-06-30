@@ -35,7 +35,8 @@ model Book {
   notes      String?
   summary    String?
   vibeTags   String[]   @default([])
-  position   Int        @default(0)        // ← добавили
+  position   Int        @default(0)
+  isPublic   Boolean    @default(false)
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
   quotes     Quote[]

@@ -13,7 +13,8 @@ export interface Book {
   summary?: string | null
   vibeTags?: string[]
   coverUrl?: string | null
-  position?: number          // ← для drag&drop
+  position?: number         
+  isPublic?: boolean        
   quotes?: Quote[]
   characters?: Character[]
   createdAt: string
@@ -40,3 +41,17 @@ export const STATUS_LABELS: Record<Status, string> = {
 }
 
 export type SortBy = 'date' | 'rating' | 'author'
+
+// ── G: Сообщество ──
+
+export interface PublicUser {
+  id: number
+  username: string | null
+  publicBooksCount: number
+}
+
+// Облегчённый юзер (только id + username) — приходит в публичных книгах
+export interface PublicAuthor {
+  id: number
+  username: string | null
+}
