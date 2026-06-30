@@ -13,6 +13,14 @@ const idParam = {
 
 const bookStatus = { type: 'string', enum: ['WANT', 'READING', 'READ'] }
 
+// ← НОВОЕ: допустимые значки рейтинга + рейтинг с шагом 0.5
+const RATING_ICONS = [
+  'star', 'heart', 'skull', 'flower', 'moon', 'fire',
+  'crown', 'gem', 'lightning', 'clover', 'butterfly', 'sparkles',
+]
+const ratingIconSchema = { type: 'string', enum: RATING_ICONS }
+const ratingSchema = { type: 'number', minimum: 0, maximum: 10, multipleOf: 0.5 }
+
 // ─── Вспомогательная функция: Google Books → Pollinations fallback ───
 async function fetchOrGenerateCover(
   title: string,
@@ -115,7 +123,6 @@ export default async function booksRoutes(app: FastifyInstance) {
     if (status) where.status = status
     if (genre) where.genre = genre
 
-    // По умолчанию — пользовательский порядок (drag&drop)
     let orderBy: any = [{ position: 'asc' }, { createdAt: 'desc' }]
     if (sort === 'rating') orderBy = { rating: 'desc' }
     if (sort === 'author') orderBy = { author: 'asc' }
@@ -157,7 +164,8 @@ export default async function booksRoutes(app: FastifyInstance) {
             genre: { type: 'string' },
             year: { type: 'integer' },
             status: bookStatus,
-            rating: { type: 'integer', minimum: 1, maximum: 10 },
+            rating: ratingSchema,              // ← было integer
+            ratingIcon: ratingIconSchema,      // ← НОВОЕ
             coverUrl: { type: 'string' },
             notes: { type: 'string' },
             summary: { type: 'string' },
@@ -170,7 +178,6 @@ export default async function booksRoutes(app: FastifyInstance) {
       const userId = request.user!.userId
       const body = request.body as any
 
-      // position = max + 1, чтобы новая книга была в конце полки
       const last = await prisma.book.findFirst({
         where: { userId },
         orderBy: { position: 'desc' },
@@ -187,6 +194,7 @@ export default async function booksRoutes(app: FastifyInstance) {
           year: body.year,
           status: body.status ?? 'WANT',
           rating: body.rating,
+          ratingIcon: body.ratingIcon ?? 'star',   // ← НОВОЕ
           coverUrl: body.coverUrl,
           notes: body.notes,
           summary: body.summary,
@@ -212,12 +220,14 @@ export default async function booksRoutes(app: FastifyInstance) {
             genre: { type: 'string' },
             year: { type: 'integer' },
             status: bookStatus,
-            rating: { type: 'integer', minimum: 1, maximum: 10 },
+            rating: ratingSchema,                                        // ← 0.5 шаг
+            ratingIcon: ratingIconSchema,                                // ← НОВОЕ
             coverUrl: { type: 'string' },
+            coverPosition: { type: 'number', minimum: 0, maximum: 100 }, // ← НОВОЕ
             notes: { type: 'string' },
             summary: { type: 'string' },
             position: { type: 'integer', minimum: 0 },
-            isPublic: { type: 'boolean' },   // ← НОВОЕ
+            isPublic: { type: 'boolean' },
           },
           additionalProperties: false,
         },
@@ -233,8 +243,8 @@ export default async function booksRoutes(app: FastifyInstance) {
 
       const allowed = [
         'title', 'author', 'genre', 'year',
-        'status', 'rating', 'coverUrl', 'notes', 'summary',
-        'position', 'isPublic',   // ← добавили isPublic
+        'status', 'rating', 'ratingIcon', 'coverUrl', 'coverPosition',
+        'notes', 'summary', 'position', 'isPublic',
       ]
       const data: Record<string, any> = {}
       for (const key of allowed) if (key in body) data[key] = body[key]
@@ -302,7 +312,7 @@ export default async function booksRoutes(app: FastifyInstance) {
       const coverUrl = `/uploads/covers/${filename}`
       const updated = await prisma.book.update({
         where: { id },
-        data: { coverUrl },
+        data: { coverUrl, coverPosition: 50 },   // ← сброс фокуса при новой обложке
       })
 
       return updated
@@ -357,7 +367,7 @@ export default async function booksRoutes(app: FastifyInstance) {
 
         const updated = await prisma.book.update({
           where: { id },
-          data: { coverUrl: `/uploads/covers/${filename}` },
+          data: { coverUrl: `/uploads/covers/${filename}`, coverPosition: 50 },
           include: { quotes: true, characters: true },
         })
 

@@ -1,8 +1,13 @@
 import { apiFetch } from '../lib/api'
-import type { Book, PublicUser, PublicAuthor } from '../types/models'
+import type { Book, PublicUser, PublicAuthor, FeedBook } from '../types/models'
 
 // Публичные эндпоинты — без авторизации, но apiFetch просто не пошлёт токен,
 // бэк их и так не требует.
+
+// Лента всех публичных книг (как в Телеграме)
+export function getPublicFeed(): Promise<FeedBook[]> {
+  return apiFetch<FeedBook[]>('/public/books')
+}
 
 // Список юзеров с публичными книгами
 export function getPublicUsers(): Promise<PublicUser[]> {
@@ -18,9 +23,7 @@ export function getPublicUserBooks(
   )
 }
 
-// Одна публичная книга (со всем содержимым)
-export function getPublicBook(
-  id: number
-): Promise<Book & { user: PublicAuthor }> {
-  return apiFetch<Book & { user: PublicAuthor }>(`/public/books/${id}`)
+// Одна публичная книга (со всем содержимым + владелец)
+export function getPublicBook(id: number): Promise<FeedBook> {
+  return apiFetch<FeedBook>(`/public/books/${id}`)
 }

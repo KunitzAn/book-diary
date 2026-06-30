@@ -4,6 +4,19 @@ import { prisma } from '../lib/prisma.js'
 // ВАЖНО: здесь НЕТ authMiddleware — эндпоинты открыты всем
 
 export default async function publicRoutes(app: FastifyInstance) {
+
+  // ── GET /public/books — лента всех публичных книг (как в ТГ) ──
+  app.get('/public/books', async () => {
+    const books = await prisma.book.findMany({
+      where: { isPublic: true },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: { select: { id: true, username: true } },
+      },
+    })
+    return books
+  })
+
   // ── GET /public/users — список юзеров, у которых есть публичные книги ──
   app.get('/public/users', async () => {
     const users = await prisma.user.findMany({

@@ -19,6 +19,10 @@ function coverSrc(url?: string | null): string {
   return url.startsWith('http') ? url : `${API_URL}${url}`
 }
 
+function coverPos(b: { coverPosition?: number | null }): string {
+  return `center ${b.coverPosition ?? 50}%`
+}
+
 onMounted(async () => {
   try {
     const data = await getPublicUserBooks(Number(props.userId))
@@ -56,7 +60,12 @@ function openBook(id: number) {
         @click="openBook(b.id)"
       >
         <div class="cover">
-          <img v-if="b.coverUrl" :src="coverSrc(b.coverUrl)" :alt="b.title" />
+          <img
+            v-if="b.coverUrl"
+            :src="coverSrc(b.coverUrl)"
+            :alt="b.title"
+            :style="{ objectPosition: coverPos(b) }"
+          />
           <div v-else class="no-cover">{{ b.title }}</div>
         </div>
         <div class="title">{{ b.title }}</div>

@@ -78,7 +78,7 @@ export default async function aiRoutes(app: FastifyInstance) {
     return reply.send({ character })
   })
 
-  // ─── F2: POST /books/:id/generate-vibe — хештеги вайба по цитатам ───
+  // ─── F2: POST /books/:id/generate-vibe — теги-вайб (цитаты + содержание + жанр) ───
   app.post('/books/:id/generate-vibe', async (
     req: FastifyRequest<{ Params: { id: string } }>,
     reply: FastifyReply
@@ -92,22 +92,29 @@ export default async function aiRoutes(app: FastifyInstance) {
     })
     if (!book) return reply.status(404).send({ error: 'Книга не найдена' })
 
-    if (!book.quotes.length) {
-      return reply.status(400).send({ error: 'Сначала добавь хотя бы одну цитату' })
-    }
+    const quotesText = book.quotes.length
+      ? book.quotes.map(q => `«${q.text}»`).join('\n')
+      : '(цитат нет)'
 
-    const quotesText = book.quotes.map(q => `«${q.text}»`).join('\n')
+    const prompt = `Книга "${book.title}" автора ${book.author}.
+${book.genre ? `Жанр: ${book.genre}.` : ''}
+${book.summary ? `Краткое содержание: ${book.summary}` : ''}
 
-    const prompt = `Вот цитаты из книги "${book.title}" автора ${book.author}:
+Цитаты из книги:
 ${quotesText}
 
-На основе этих цитат определи атмосферу, настроение и стиль книги.
-Верни ТОЛЬКО JSON массив из 5-8 коротких хештегов на русском (одно-два слова, без символа #).
-Пример: ["меланхолия", "одиночество", "поиск смысла"].
+На основе ВСЕЙ информации выше (жанр, содержание и цитаты) определи атмосферу,
+настроение, темы и стиль книги.
+Верни ТОЛЬКО JSON массив из 6-9 тегов на русском.
+Тег — это слово ИЛИ короткое словосочетание (до 3 слов), без символа #.
+Примеры: ["тихая меланхолия", "поиск себя", "магический реализм", "тоска по дому"].
 Без markdown, без пояснений.`
 
     const tags = await generateJSON<string[]>(prompt)
-    const vibeTags = tags.map(t => t.replace(/^#/, '').trim()).filter(Boolean)
+    const vibeTags = tags
+      .map(t => t.replace(/^#/, '').trim())
+      .filter(Boolean)
+      .slice(0, 9)
 
     const updated = await prisma.book.update({
       where: { id: bookId },

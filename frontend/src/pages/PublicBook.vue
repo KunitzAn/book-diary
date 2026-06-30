@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getPublicBook } from '../api/public'
 import type { Book, PublicAuthor } from '../types/models'
-import { STATUS_LABELS } from '../types/models'
+import { STATUS_LABELS, ratingEmoji } from '../types/models'
 
 const props = defineProps<{ id: string }>()
 const router = useRouter()
@@ -17,6 +17,10 @@ const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 function coverSrc(url?: string | null): string {
   if (!url) return ''
   return url.startsWith('http') ? url : `${API_URL}${url}`
+}
+
+function coverPos(b: { coverPosition?: number | null }): string {
+  return `center ${b.coverPosition ?? 50}%`
 }
 
 onMounted(async () => {
@@ -43,20 +47,27 @@ onMounted(async () => {
     <p v-else-if="error" class="error">{{ error }}</p>
 
     <template v-else-if="book">
-      <div class="head">
-        <div class="cover">
-          <img v-if="book.coverUrl" :src="coverSrc(book.coverUrl)" :alt="book.title" />
-          <div v-else class="no-cover">{{ book.title }}</div>
-        </div>
-        <div class="meta">
-          <h1>{{ book.title }}</h1>
-          <p class="author">{{ book.author }}</p>
-          <p v-if="book.genre" class="row">Жанр: {{ book.genre }}</p>
-          <p v-if="book.year" class="row">Год: {{ book.year }}</p>
-          <p class="row">Статус: {{ STATUS_LABELS[book.status] }}</p>
-          <p v-if="book.rating" class="row">Оценка: {{ book.rating }}/10</p>
-          <p class="owner">из полки {{ book.user.username || `#${book.user.id}` }}</p>
-        </div>
+      <!-- Широкая обложка во всю ширину сверху -->
+      <div class="hero">
+        <img
+          v-if="book.coverUrl"
+          :src="coverSrc(book.coverUrl)"
+          :alt="book.title"
+          :style="{ objectPosition: coverPos(book) }"
+        />
+        <div v-else class="no-cover">{{ book.title }}</div>
+      </div>
+
+      <div class="meta">
+        <h1>{{ book.title }}</h1>
+        <p class="author">{{ book.author }}</p>
+        <p v-if="book.genre" class="row">Жанр: {{ book.genre }}</p>
+        <p v-if="book.year" class="row">Год: {{ book.year }}</p>
+        <p class="row">Статус: {{ STATUS_LABELS[book.status] }}</p>
+        <p v-if="book.rating != null" class="row">
+          Оценка: {{ ratingEmoji(book.ratingIcon) }} {{ book.rating }}/10
+        </p>
+        <p class="owner">из полки {{ book.user.username || `#${book.user.id}` }}</p>
       </div>
 
       <div v-if="book.vibeTags?.length" class="tags">
@@ -99,10 +110,23 @@ onMounted(async () => {
 <style scoped>
 .page { max-width: 720px; margin: 0 auto; padding: 16px; }
 .back { background: none; border: none; color: #555; cursor: pointer; padding: 8px 0; }
-.head { display: flex; gap: 20px; margin-bottom: 20px; }
-.cover { width: 160px; aspect-ratio: 2/3; border-radius: 10px; overflow: hidden; background: #eee; flex-shrink: 0; }
-.cover img { width: 100%; height: 100%; object-fit: cover; }
-.no-cover { display: flex; align-items: center; justify-content: center; height: 100%; padding: 8px; text-align: center; color: #777; }
+
+/* Широкая обложка-герой */
+.hero {
+  width: 100%;
+  height: 220px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #eee;
+  margin-bottom: 16px;
+}
+.hero img { width: 100%; height: 100%; object-fit: cover; }
+.no-cover {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; padding: 8px; text-align: center; color: #777;
+}
+
+.meta { margin-bottom: 20px; }
 .meta h1 { margin: 0 0 4px; }
 .author { color: #666; margin: 0 0 12px; }
 .row { margin: 2px 0; font-size: 14px; }
