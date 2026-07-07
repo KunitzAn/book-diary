@@ -272,6 +272,44 @@
 
         <!-- Цитаты -->
         <div v-else-if="activeTab === 'quotes'" class="flex flex-col gap-3 p-4">
+
+          <!-- ✨ Массовый разбор через ИИ -->
+          <div class="rounded-2xl border border-dashed border-accent-violet/40 bg-gradient-to-br from-accent-violet/5 to-accent-blue/5 p-3">
+            <button
+              @click="bulkOpen = !bulkOpen"
+              class="flex w-full items-center justify-between text-left"
+            >
+              <span class="flex items-center gap-2 text-sm font-medium text-accent-violet">
+                ✨ Вставить список цитат
+              </span>
+              <span class="text-gray-400 transition" :class="{ 'rotate-180': bulkOpen }">▾</span>
+            </button>
+
+            <div v-if="bulkOpen" class="mt-3 flex flex-col gap-2">
+              <p class="text-xs text-gray-400">
+                Вставь текст с несколькими цитатами в любом виде — ИИ сам разложит
+                их по отдельности.
+              </p>
+              <textarea
+                v-model="bulkText"
+                rows="6"
+                placeholder="Вставь сюда цитаты списком…"
+                class="field resize-none"
+                :disabled="bulkLoading"
+              />
+              <button
+                @click="submitBulkQuotes"
+                :disabled="!bulkText.trim() || bulkLoading"
+                class="btn-ai self-end"
+              >
+                <span v-if="bulkLoading" class="animate-spin">⏳</span>
+                <span v-else>✨</span>
+                {{ bulkLoading ? 'Разбираю…' : 'Разобрать через ИИ' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Ручное добавление одной цитаты -->
           <div class="flex flex-col gap-2 rounded-2xl border border-dashed border-white/60 bg-white/30 p-3">
             <textarea v-model="newQuote.text" rows="2" placeholder="Текст цитаты…" class="field resize-none" />
             <input v-model="newQuote.chapter" type="text" placeholder="Глава (необязательно)" class="field" />
@@ -358,6 +396,7 @@ import { useRouter } from 'vue-router'
 import {
   getBook, updateBook, deleteBook,
   addQuote, updateQuote, deleteQuote,
+  bulkParseQuotes,
   addCharacter, updateCharacter, deleteCharacter,
   uploadCover,
   generateSummary,
@@ -588,6 +627,26 @@ async function removeQuote(id: number) {
     book.value!.quotes = book.value!.quotes!.filter(q => q.id !== id)
   } catch (e) {
     toastError(e instanceof Error ? e.message : 'Ошибка')
+  }
+}
+
+// ─── массовый разбор цитат через ИИ ───────────────────────
+const bulkText = ref('')
+const bulkLoading = ref(false)
+const bulkOpen = ref(false)
+
+async function submitBulkQuotes() {
+  if (!book.value || !bulkText.value.trim()) return
+  bulkLoading.value = true
+  try {
+    const { quotes } = await bulkParseQuotes(book.value.id, bulkText.value.trim())
+    book.value.quotes!.push(...quotes)
+    bulkText.value = ''
+    bulkOpen.value = false
+  } catch (e) {
+    toastError(e instanceof Error ? e.message : 'Не удалось разобрать цитаты')
+  } finally {
+    bulkLoading.value = false
   }
 }
 

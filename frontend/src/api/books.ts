@@ -58,6 +58,13 @@ export function addQuote(bookId: number, data: { text: string; chapter?: string 
   })
 }
 
+export function bulkParseQuotes(bookId: number, text: string): Promise<{ quotes: Quote[] }> {
+  return apiFetch<{ quotes: Quote[] }>(`/books/${bookId}/quotes/bulk-ai`, {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  })
+}
+
 export function updateQuote(id: number, data: { text?: string; chapter?: string | null }): Promise<Quote> {
   return apiFetch<Quote>(`/quotes/${id}`, {
     method: 'PATCH',
